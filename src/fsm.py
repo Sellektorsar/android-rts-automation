@@ -19,6 +19,8 @@ class GameState:
     CITY_VIEW = "city_view"             # Главный экран замка и города
     WORLD_MAP = "world_map"             # Карта королевства (фермы, монстры, враги)
     CAMPAIGN_MAP = "campaign_map"       # Карта этапов кампании ("Спаситель порядка")
+    ROYAL_ROAD = "royal_road"           # Список сюжетных заданий главы (Королевская Дорога)
+    QUESTS_MENU = "quests_menu"         # Ежедневные и сюжетные задания
     STAGE_BRIEFING = "stage_briefing"   # Карточка этапа с кнопкой "Испытание"
     TUTORIAL_BATTLE = "tutorial_battle" # Бой на арене с волнами монстров
     SKILL_SELECTION = "skill_selection" # Выбор карт навыков при повышении уровня
@@ -31,7 +33,8 @@ class GameState:
     POPUP_REWARD = "popup_reward"       # Окно получения сундука/награды
     
     # Внутренние меню
-    BUILDING_MENU = "building_menu"     # Меню улучшения здания
+    BUILDING_MENU = "building_menu"     # Радиальное меню выбранного здания
+    BUILDING_UPGRADE = "building_upgrade"  # Панель улучшения (требования + кнопка)
     RESEARCH_MENU = "research_menu"     # Институт / дерево исследований
     TRAINING_MENU = "training_menu"     # Казармы / найм войск
     ALLIANCE_MENU = "alliance_menu"     # Меню альянса / помощь

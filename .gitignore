@@ -8,6 +8,10 @@ __pycache__/
 *.log
 bot.log
 
+# Runtime logs and calibration screenshots.
+# Могут содержать данные аккаунта или чужих приложений — не коммитим.
+logs/
+
 # IDE & workspace files
 .idea/
 .vscode/

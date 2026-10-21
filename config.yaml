@@ -3,8 +3,16 @@
 device:
   adb_path: "C:\\platform-tools\\adb.exe"
   ip: "192.168.31.156"
-  port: 33565
+  port: 37387
   timeout_sec: 10
+  # Сколько секунд можно переиспользовать последний кадр (экономия ADB)
+  frame_ttl_sec: 1.5
+  # Не давать экрану гаснуть: без этого Wi-Fi ADB отваливается и разбудить
+  # устройство удалённо невозможно.
+  keep_screen_on: true
+  # Переподключение по Wi-Fi: прямое подключение, затем поиск через `adb mdns services`
+  reconnect_interval_sec: 30
+  auto_discovery: true
   # Режим ввода: "adb" (Bezier curves + Gaussian jitter) или "esp32_ble" (аппаратный BLE HID контроллер)
   input_mode: "adb"
   esp32:
@@ -26,29 +34,62 @@ anti_detect:
   # Использовать сглаженные свайпы вместо мгновенных
   smooth_swipes: true
 
+perception:
+  # OCR используется как резерв, когда якорные шаблоны не нашли экран
+  allow_ocr: true
+  # Полный кадр распознаётся в уменьшенном виде (0.5 = в 4 раза быстрее)
+  ocr_scale: 0.5
+  # Поиск шаблонов на уменьшенном кадре (0.5 = в 4 раза быстрее)
+  match_scale: 0.5
+  # Средняя яркость нижней навигации: в городе ~90, под затемнением модалки ~17
+  city_nav_min_brightness: 45
+  # Как часто перечитывать ресурсы и силу из HUD (секунды)
+  hud_interval_sec: 60
+
+recovery:
+  enabled: true
+  reconnect_interval_sec: 30
+  relaunch_after_failures: 3
+
+logging:
+  dir: "logs"
+  save_failure_frames: true
+
 tasks:
   popup_closer:
     enabled: true
     interval_sec: 5
 
   alliance_help:
-    enabled: true
+    # TODO: аккаунт пока не в альянсе; включить после вступления и калибровки шаблонов
+    enabled: false
     interval_sec: 60
 
   city_harvest:
     enabled: true
     interval_sec: 180
 
-  chapter_quest:
+  city_gifts:
+    # Подарок торговца с зелёной галочкой -> баннер награды -> тап по полю.
     enabled: true
+    interval_sec: 900
+
+  chapter_quest:
+    # TODO: включить после реализации полного пайплайна этапа кампании
+    enabled: false
     interval_sec: 15
 
   building_upgrade:
-    enabled: true
-    interval_sec: 20
+    # Проверенный сценарий: выделить здание -> «Улучшить» -> синяя кнопка.
+    # Задача не нажимает зелёную кнопку гемов; при нехватке условий выходит.
+    enabled: false
+    interval_sec: 60
+    spots:
+      - [639, 1500]  # Стена Замка, камера по умолчанию
 
   barracks_train:
-    enabled: true
+    # TODO: включить после реализации поиска казармы и окна найма
+    enabled: false
     interval_sec: 300
 
   gathering:
@@ -63,6 +104,10 @@ policy_and_safety:
   max_consecutive_failures: 2
   stop_on_unknown_dialog: true
   stop_on_payment_screen: true
+  # recover — закрывать неизвестный экран и возвращаться в город; stop — падать в паузу
+  on_unknown: "recover"
+  unknown_timeout_sec: 25
+  max_back_attempts: 2
   risk_gates:
     real_money_purchase: "deny"
     premium_currency: "require_owner_approval"

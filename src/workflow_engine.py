@@ -13,7 +13,6 @@ from loguru import logger
 
 from src.adb_client import AdbClient
 from src.fsm import GameFSM, GameState
-from src.human_input import HumanInput
 from src.reflection import ReflectionLog
 from src.vision import Vision
 from src.world_model import WorldModel

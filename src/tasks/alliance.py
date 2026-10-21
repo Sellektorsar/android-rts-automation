@@ -11,10 +11,15 @@ from src.tasks.base_task import BaseTask
 
 
 class AllianceTask(BaseTask):
-    def __init__(self, client, vision, interval_sec: int = 60):
-        super().__init__("Alliance", client, vision, interval_sec)
+    def __init__(self, client, vision, interval_sec: int = 60, reflection=None):
+        super().__init__("Alliance", client, vision, interval_sec, reflection=reflection)
 
     def execute(self, screen: np.ndarray) -> bool:
+        if not self.require_templates(
+            ("bubble_alliance_help", "btn_alliance_help_all", "btn_claim_all_gifts")
+        ):
+            return False
+
         acted = False
 
         # 1. Проверяем наличие плавающей иконки помощи альянсу (рукопожатие над замком/посольством)

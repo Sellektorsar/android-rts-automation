@@ -13,7 +13,6 @@ import time
 from typing import Optional
 from loguru import logger
 import numpy as np
-from rapidocr_onnxruntime import RapidOCR
 
 from src.adb_client import AdbClient
 from src.tasks.base_task import BaseTask
@@ -21,9 +20,10 @@ from src.vision import Vision
 
 
 class TroopTrainingTask(BaseTask):
-    def __init__(self, client: AdbClient, vision: Vision, interval_sec: int = 120):
-        super().__init__("TroopTraining", client, vision, interval_sec=interval_sec)
-        self.ocr = RapidOCR()
+    def __init__(self, client: AdbClient, vision: Vision, interval_sec: int = 120, reflection=None):
+        super().__init__(
+            "TroopTraining", client, vision, interval_sec=interval_sec, reflection=reflection
+        )
         self.barracks_coords = (850, 1600)
         self.radial_recruit_coords = (690, 1260)
         self.tabs = {
@@ -33,19 +33,16 @@ class TroopTrainingTask(BaseTask):
             "mages": (960, 329),
         }
         self.btn_train = (845, 2337)
+        self._not_implemented_warned = False
 
     def can_run(self) -> bool:
         return super().can_run()
 
     def execute(self, screen: np.ndarray) -> bool:
-        """
-        Запуск цикла найма войск.
-        """
-        self.mark_executed()
-        logger.info("[TroopTraining] Проверка очереди найма войск...")
-        # Шаг 1: Проверяем, есть ли готовые нанятые войска (иконка меча/шлема над казармой)
-        # Если экран в городе, кликаем по казарме
-        # Пока используем откалиброванные координаты казармы или вызов из квеста
+        """Пока не реализовано: нет надёжных шаблонов казармы и окна найма."""
+        if not self._not_implemented_warned:
+            logger.warning("[TroopTraining] Задача не реализована (нужны шаблоны казармы и окна найма).")
+            self._not_implemented_warned = True
         return False
 
     def train_archers(self, count: int = 30) -> bool:

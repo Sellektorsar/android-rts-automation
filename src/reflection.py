@@ -87,8 +87,23 @@ class ReflectionLog:
 
     def success_rate(self, task_prefix: str, window: int = 30) -> float:
         """Расчет процента успешности задачи за последние N вызовов."""
-        relevant = [e for e in self.entries[-window:] if e.get("task", "").startswith(task_prefix)]
-        if not relevant:
-            return 1.0
+        return self.task_stats(task_prefix, window=window)["rate"]
+
+    def task_stats(self, task_prefix: str, window: int = 30) -> Dict[str, Any]:
+        """Статистика задачи: всего записей, успехи, сбои и доля успехов.
+
+        Нужна для адаптивного интервала: если задача стабильно падает,
+        движок увеличивает паузу вместо повторения одного и того же сбоя.
+        """
+        relevant = [
+            e for e in self.entries[-window:] if e.get("task", "").startswith(task_prefix)
+        ]
+        total = len(relevant)
         successes = sum(1 for e in relevant if e.get("type") == "success")
-        return successes / len(relevant)
+        failures = total - successes
+        return {
+            "total": total,
+            "successes": successes,
+            "failures": failures,
+            "rate": (successes / total) if total else 1.0,
+        }

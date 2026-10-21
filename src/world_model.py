@@ -91,9 +91,15 @@ class WorldModel:
     # ТАЙМЕРЫ И СТРОИТЕЛИ
     # =========================================================
 
-    def clean_expired_timers(self) -> None:
-        """Сброс завершившихся таймеров строительства и найма."""
+    def clean_expired_timers(self) -> list[str]:
+        """Сброс завершившихся таймеров строительства, исследования и найма.
+
+        Возвращает описания завершённых событий — их удобно писать в лог
+        и использовать для планирования следующего действия.
+        """
         now = time.time()
+        completed: list[str] = []
+
         for b_id, b_data in self.state["builders"].items():
             if b_data["busy"] and b_data["timer_end"] and now >= b_data["timer_end"]:
                 target = b_data["target"]
@@ -105,40 +111,136 @@ class WorldModel:
                     self.state["buildings"][target]["upgrading"] = False
                     self.state["buildings"][target]["timer_end"] = None
                     self.state["buildings"][target]["level"] += 1
+                    completed.append(f"building:{target}")
+                else:
+                    completed.append(f"builder:{b_id}")
 
-        if self.state["research"]["active"] and self.state["research"]["timer_end"] and now >= self.state["research"]["timer_end"]:
-            logger.info(f"[WorldModel] Исследование {self.state['research']['target']} завершено!")
-            self.state["research"]["active"] = False
-            self.state["research"]["target"] = None
-            self.state["research"]["timer_end"] = None
+        research = self.state["research"]
+        if research["active"] and research["timer_end"] and now >= research["timer_end"]:
+            logger.info(f"[WorldModel] Исследование {research['target']} завершено!")
+            completed.append(f"research:{research['target']}")
+            research["active"] = False
+            research["target"] = None
+            research["timer_end"] = None
+
+        for name, training in self.state.get("training", {}).items():
+            if training["active"] and training["timer_end"] and now >= training["timer_end"]:
+                training["active"] = False
+                training["timer_end"] = None
+                completed.append(f"training:{name}")
+
+        if completed:
+            self.save()
+        return completed
+
+    def builders_available(self) -> int:
+        """Сколько строителей свободно прямо сейчас."""
+        self.clean_expired_timers()
+        free = 0
+        if not self.state["builders"]["builder_1"]["busy"]:
+            free += 1
+        if (
+            self.state["account"].get("has_second_builder")
+            and not self.state["builders"]["builder_2"]["busy"]
+        ):
+            free += 1
+        return free
 
     def is_builder_free(self) -> bool:
         """Доступен ли хотя бы один бесплатный строитель."""
+        return self.builders_available() > 0
+
+    def start_upgrade(self, building_name: str, duration_sec: float) -> bool:
+        """Регистрация начатого улучшения здания.
+
+        Возвращает False, если все доступные слоты строителей заняты:
+        лучше не отмечать здание улучшающимся, чем показывать ложный таймер.
+        """
         self.clean_expired_timers()
         if not self.state["builders"]["builder_1"]["busy"]:
-            return True
-        if self.state["account"]["has_second_builder"] and not self.state["builders"]["builder_2"]["busy"]:
-            return True
-        return False
+            b_slot = "builder_1"
+        elif (
+            self.state["account"].get("has_second_builder")
+            and not self.state["builders"]["builder_2"]["busy"]
+        ):
+            b_slot = "builder_2"
+        else:
+            logger.warning(
+                f"[WorldModel] Нельзя начать улучшение {building_name}: все строители заняты."
+            )
+            return False
 
-    def start_upgrade(self, building_name: str, duration_sec: float) -> None:
-        """Регистрация начатого улучшения здания."""
         now = time.time()
-        timer_end = now + duration_sec
-        b_slot = "builder_1" if not self.state["builders"]["builder_1"]["busy"] else "builder_2"
+        timer_end = now + max(0.0, float(duration_sec))
         self.state["builders"][b_slot] = {
             "busy": True,
             "target": building_name,
             "timer_end": timer_end,
         }
         if building_name not in self.state["buildings"]:
-            self.state["buildings"][building_name] = {"level": 1, "upgrading": True, "timer_end": timer_end}
+            self.state["buildings"][building_name] = {
+                "level": 1,
+                "upgrading": True,
+                "timer_end": timer_end,
+            }
         else:
             self.state["buildings"][building_name]["upgrading"] = True
             self.state["buildings"][building_name]["timer_end"] = timer_end
 
-        logger.info(f"[WorldModel] Улучшение {building_name} начато на слоте {b_slot}. Окончание через {duration_sec}с.")
+        logger.info(
+            f"[WorldModel] Улучшение {building_name} начато на слоте {b_slot}. "
+            f"Окончание через {duration_sec}с."
+        )
         self.save()
+        return True
+
+    # =========================================================
+    # ПЛАНИРОВАНИЕ ПО ТАЙМЕРАМ
+    # =========================================================
+
+    def next_event(self) -> Optional[Tuple[float, str]]:
+        """Ближайшее завершение таймера: (unix_time, описание) или None."""
+        self.clean_expired_timers()
+        now = time.time()
+        events: list[Tuple[float, str]] = []
+
+        for b_id, data in self.state["builders"].items():
+            if data["busy"] and data.get("timer_end") and data["timer_end"] > now:
+                events.append((float(data["timer_end"]), f"builder:{b_id}:{data.get('target')}"))
+
+        research = self.state["research"]
+        if research["active"] and research.get("timer_end") and research["timer_end"] > now:
+            events.append((float(research["timer_end"]), f"research:{research.get('target')}"))
+
+        for name, training in self.state.get("training", {}).items():
+            if training["active"] and training.get("timer_end") and training["timer_end"] > now:
+                events.append((float(training["timer_end"]), f"training:{name}"))
+
+        if not events:
+            return None
+        events.sort(key=lambda item: item[0])
+        return events[0]
+
+    def seconds_until_next_event(self) -> float:
+        """Сколько секунд до ближайшего таймера (inf, если таймеров нет)."""
+        event = self.next_event()
+        return max(0.0, event[0] - time.time()) if event else float("inf")
+
+    def get_summary(self) -> str:
+        """Короткая строка состояния для heartbeat/логов."""
+        account = self.state["account"]
+        nxt = self.next_event()
+        if nxt:
+            remaining = max(0, int(nxt[0] - time.time()))
+            next_text = f", next={nxt[1]} in {remaining // 60}м"
+        else:
+            next_text = ", next=none"
+        return (
+            f"castle={account.get('castle_level', '?')}, "
+            f"lord={account.get('lord_level', '?')}, "
+            f"power={account.get('power', 0)}, "
+            f"builders={self.builders_available()}{next_text}"
+        )
 
     # =========================================================
     # АДАПТИВНЫЕ КООРДИНАТЫ ЗДАНИЙ

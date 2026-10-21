@@ -1,13 +1,13 @@
 {
   "account": {
     "castle_level": 4,
-    "power": 3599,
-    "lord_level": 2,
-    "gems": 110,
+    "power": 6137,
+    "lord_level": 3,
+    "gems": 130,
     "vip_level": 1,
     "has_second_builder": false,
-    "current_chapter": 2,
-    "current_chapter_title": "Развитие технологий",
+    "current_chapter": 4,
+    "current_chapter_title": null,
     "beast_unlocked": "Panda"
   },
   "builders": {
@@ -74,42 +74,12 @@
     }
   },
   "resources": {
-    "food": 105000,
-    "wood": 105000,
+    "food": 128800,
+    "wood": 97900,
     "stone": 0,
     "iron": 0
   },
-  "cached_coordinates": {
-    "castle": {
-      "x": 200,
-      "y": 1150,
-      "hits": 1,
-      "misses": 0
-    },
-    "builder_idle": {
-      "x": 75,
-      "y": 402,
-      "hits": 1,
-      "misses": 0
-    },
-    "quest_hammer": {
-      "x": 70,
-      "y": 565,
-      "hits": 1,
-      "misses": 0
-    },
-    "world_map_toggle": {
-      "x": 115,
-      "y": 2355,
-      "hits": 1,
-      "misses": 0
-    },
-    "royal_road_crown": {
-      "x": 75,
-      "y": 1960,
-      "hits": 5,
-      "misses": 0
-    }
-  },
-  "last_updated": 1792574000.0
+  "cached_coordinates": {},
+  "last_updated": 1792618321.13092,
+  "ui_state": "city_view"
 }
