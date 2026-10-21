@@ -109,6 +109,39 @@ class ActionGuard:
             logger.warning(f"[Guard] Действие отменено: {reason}")
         return ok
 
+    def refresh_if_stale(
+        self,
+        frame: Optional[np.ndarray],
+        *,
+        max_age: float = 8.0,
+    ) -> Tuple[Optional[np.ndarray], str]:
+        """Возвращает пригодный кадр, при необходимости делая новый снимок.
+
+        Раньше задача просто отменяла действие, если переданный движком кадр
+        успел устареть за время классификации и OCR. Это защищало от клика
+        по старому экрану, но иногда отменяло безопасное городское действие
+        без реальной причины. Теперь при устаревшем или тёмном кадре делается
+        ровно один свежий снимок; если и он непригоден — действие отменяется.
+
+        Возвращает ``(frame, reason)``, где ``reason``:
+        * ``ok`` — исходный кадр пригоден;
+        * ``refreshed`` — сделан новый пригодный снимок;
+        * иное — причина отказа, кадр равен ``None``.
+        """
+        ok, reason = self.is_actionable(frame, max_age=max_age)
+        if ok:
+            return frame, "ok"
+
+        logger.info(f"[Guard] Кадр не пригоден ({reason}), переснимаем перед действием.")
+        fresh = self.capture(fresh=True)
+        if fresh is None:
+            return None, "no_frame_after_refresh"
+
+        fresh_ok, fresh_reason = self.is_actionable(fresh, max_age=max_age)
+        if not fresh_ok:
+            return None, fresh_reason
+        return fresh, "refreshed"
+
     # ------------------------------------------------------------------
     # Ожидание шаблонов
     # ------------------------------------------------------------------

@@ -257,17 +257,20 @@ jitter. Поэтому HID-часть и `release_touch` не переносил
 | `src/tasks/*.py` | Проброс `reflection` в базовый класс |
 | `src/world_model.py` | Таймеры, свободные строители, ближайшее событие, summary |
 | `src/bot_engine.py` | Проброс reflection, логирование завершённых таймеров, summary в heartbeat |
-| `tests/test_action_guard.py` | 6 тестов guard |
+| `tests/test_action_guard.py` | 9 тестов guard, включая пересъёмку устаревшего и тёмного кадра |
 | `tests/test_reflection_backoff.py` | 5 тестов backoff и записи результатов |
-| `tests/test_world_model.py` | 4 теста таймеров и строителей |
+| `tests/test_world_model.py` | 6 тестов таймеров, строителей и `current_level` |
 | `tests/test_vision.py` | 2 теста сравнения областей |
+| `tests/test_time_parser.py` | 8 тестов разбора `11:52`, `1:02:03`, русских единиц |
+| `tests/test_building_upgrade_flow.py` | 4 теста flow улучшения, OCR панели и форматов точек |
 
 Проверки:
 
-- `python -m unittest discover -s tests -v` — 26 тестов, OK. Среди них
+- `python -m unittest discover -s tests -v` — 41 тест, OK. Среди них
   офлайн-проверка полного flow улучшения на синтетических кадрах: нажимаются
   только радиальная «Улучшить» и активная синяя кнопка; неактивная серая
-  кнопка подтверждения не нажимается.
+  кнопка подтверждения не нажимается. Отдельный локальный тест проверяет OCR
+  эталонной панели: `wall`, `LV.4 → LV.5`, `11:52` = 712 с.
 - `python -m compileall -q src tools tests` — OK.
 - `python tools/healthcheck.py` — ADB, экран, игра, `city_view`, HUD в норме.
 - `python main.py --observe --duration 45` — 11 тиков, 0 ошибок.

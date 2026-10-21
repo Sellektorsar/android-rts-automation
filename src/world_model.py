@@ -38,6 +38,7 @@ class WorldModel:
             },
             "buildings": {
                 "castle": {"level": 1, "upgrading": False, "timer_end": None},
+                "wall": {"level": 1, "upgrading": False, "timer_end": None},
                 "barracks": {"level": 0, "upgrading": False, "timer_end": None},
                 "farm": {"level": 0, "upgrading": False, "timer_end": None},
                 "sawmill": {"level": 0, "upgrading": False, "timer_end": None},
@@ -150,8 +151,18 @@ class WorldModel:
         """Доступен ли хотя бы один бесплатный строитель."""
         return self.builders_available() > 0
 
-    def start_upgrade(self, building_name: str, duration_sec: float) -> bool:
+    def start_upgrade(
+        self,
+        building_name: str,
+        duration_sec: float,
+        current_level: Optional[int] = None,
+    ) -> bool:
         """Регистрация начатого улучшения здания.
+
+        :param current_level: уровень здания ДО улучшения, если его удалось
+            прочитать с панели. Панель показывает ``LV.4 -> LV.5``; запись
+            текущего уровня делает последующее завершение таймера корректным
+            (уровень станет 5, а не 2).
 
         Возвращает False, если все доступные слоты строителей заняты:
         лучше не отмечать здание улучшающимся, чем показывать ложный таймер.
@@ -179,11 +190,15 @@ class WorldModel:
         }
         if building_name not in self.state["buildings"]:
             self.state["buildings"][building_name] = {
-                "level": 1,
+                "level": int(current_level) if current_level is not None else 1,
                 "upgrading": True,
                 "timer_end": timer_end,
             }
         else:
+            # Панель улучшения — авторитетный источник текущего уровня.
+            # Без этого таймер, завершившись, увеличил бы устаревшее значение.
+            if current_level is not None:
+                self.state["buildings"][building_name]["level"] = int(current_level)
             self.state["buildings"][building_name]["upgrading"] = True
             self.state["buildings"][building_name]["timer_end"] = timer_end
 

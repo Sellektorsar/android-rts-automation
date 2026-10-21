@@ -87,6 +87,38 @@ class ActionGuardTest(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertEqual(client.taps, [])
 
+    def test_refreshes_stale_frame_once(self):
+        class RefreshingClient(FakeClient):
+            def __init__(self, frames):
+                super().__init__(frames)
+                self.age_calls = 0
+
+            def frame_age(self):
+                self.age_calls += 1
+                return 9.0 if self.age_calls == 1 else 0.0
+
+        client = RefreshingClient([frame(100)])
+        guard = ActionGuard(client, FakeVision())
+        fresh, reason = guard.refresh_if_stale(frame(100), max_age=3.0)
+        self.assertEqual(reason, "refreshed")
+        self.assertIsNotNone(fresh)
+        self.assertEqual(client.calls, 1)
+
+    def test_refreshes_dark_frame(self):
+        client = FakeClient([frame(100)])
+        guard = ActionGuard(client, FakeVision())
+        fresh, reason = guard.refresh_if_stale(frame(0), max_age=3.0)
+        self.assertEqual(reason, "refreshed")
+        self.assertIsNotNone(fresh)
+        self.assertGreater(float(fresh.mean()), 2.0)
+
+    def test_refresh_fails_if_fresh_frame_is_still_stale(self):
+        client = FakeClient([frame(100)], age=9.0)
+        guard = ActionGuard(client, FakeVision())
+        fresh, reason = guard.refresh_if_stale(frame(100), max_age=3.0)
+        self.assertIsNone(fresh)
+        self.assertIn("stale_frame", reason)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,8 @@
 import tempfile
+import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import cv2
 import numpy as np
@@ -8,6 +10,7 @@ import numpy as np
 from src.reflection import ReflectionLog
 from src.tasks.building_upgrade import BuildingUpgradeTask
 from src.vision import Vision
+from src.world_model import WorldModel
 
 
 class FakeClient:
@@ -60,6 +63,7 @@ class BuildingUpgradeFlowTest(unittest.TestCase):
         self.reflection = ReflectionLog(
             str(Path(self.tmp.name) / "reflections.json")
         )
+        self.world = WorldModel(str(Path(self.tmp.name) / "world_model.json"))
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -68,13 +72,28 @@ class BuildingUpgradeFlowTest(unittest.TestCase):
         menu, panel, city = build_frames(self.vision)
         client = FakeClient([panel, city])
         task = BuildingUpgradeTask(
-            client, self.vision, interval_sec=1, reflection=self.reflection
+            client,
+            self.vision,
+            interval_sec=1,
+            reflection=self.reflection,
+            world=self.world,
         )
 
-        self.assertTrue(task.can_run())
-        self.assertTrue(task.execute(menu))
+        with mock.patch.object(
+            task,
+            "_read_upgrade_context",
+            return_value={"name": "wall", "current_level": 4, "target_level": 5, "duration": 712},
+        ):
+            self.assertTrue(task.can_run())
+            self.assertTrue(task.execute(menu))
+
         self.assertEqual(client.taps, [(590, 1358), (820, 2315)])
         self.assertEqual(self.reflection.task_stats("BuildingUpgrade")["successes"], 1)
+        self.assertEqual(self.world.state["builders"]["builder_1"]["target"], "wall")
+        self.assertTrue(self.world.state["builders"]["builder_1"]["busy"])
+        self.assertEqual(self.world.state["buildings"]["wall"]["level"], 4)
+        remaining = self.world.state["builders"]["builder_1"]["timer_end"] - time.time()
+        self.assertAlmostEqual(remaining, 712, delta=5)
 
     def test_inactive_gray_confirm_is_not_pressed(self):
         menu, panel, _ = build_frames(self.vision, active_confirm=False)
@@ -86,6 +105,36 @@ class BuildingUpgradeFlowTest(unittest.TestCase):
         self.assertTrue(task.can_run())
         self.assertFalse(task.execute(menu))
         self.assertEqual(client.taps, [(590, 1358)])
+
+    def test_spot_formats(self):
+        self.assertEqual(BuildingUpgradeTask._parse_spots(None)[0][1], (639, 1500))
+        self.assertEqual(
+            BuildingUpgradeTask._parse_spots([[100, 200]])[0],
+            (None, (100, 200)),
+        )
+        self.assertEqual(
+            BuildingUpgradeTask._parse_spots([{"name": "wall", "point": [1, 2]}])[0],
+            ("wall", (1, 2)),
+        )
+        self.assertEqual(
+            BuildingUpgradeTask._parse_spots([("farm", [3, 4])])[0],
+            ("farm", (3, 4)),
+        )
+
+    @unittest.skipUnless(
+        Path("logs/inspect/building_upgrade_wall.png").exists(),
+        "локальный скриншот панели улучшения отсутствует",
+    )
+    def test_ocr_reads_wall_levels_and_timer(self):
+        panel = cv2.imread("logs/inspect/building_upgrade_wall.png")
+        task = BuildingUpgradeTask(
+            FakeClient([panel]), self.vision, interval_sec=1, reflection=self.reflection
+        )
+        context = task._read_upgrade_context(panel)
+        self.assertEqual(context.get("name"), "wall")
+        self.assertEqual(context.get("current_level"), 4)
+        self.assertEqual(context.get("target_level"), 5)
+        self.assertEqual(context.get("duration"), 712)
 
 
 if __name__ == "__main__":

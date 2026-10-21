@@ -164,6 +164,7 @@ class BotEngine:
                     interval_sec=upgrade_cfg.get("interval_sec", 20),
                     spots=upgrade_cfg.get("spots"),
                     reflection=self.reflection,
+                    world=self.world,
                 )
             )
 

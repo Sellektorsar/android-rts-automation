@@ -30,7 +30,8 @@ class CityGiftsTask(BaseTask):
     def execute(self, screen: np.ndarray) -> bool:
         if not self.require_templates([self.GIFT_TEMPLATE]):
             return False
-        if self.guard is not None and not self.guard.require_actionable(screen):
+        screen = self.ensure_screen(screen)
+        if screen is None:
             return False
 
         height, width = screen.shape[:2]

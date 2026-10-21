@@ -93,6 +93,25 @@ class BaseTask(ABC):
                 self._missing_templates_reported.add(name)
         return not missing
 
+    def ensure_screen(self, screen: np.ndarray, *, max_age: float = 8.0):
+        """Возвращает пригодный кадр или ``None``, если действовать нельзя.
+
+        Если движок передал устаревший кадр (классификация и OCR заняли
+        несколько секунд), задача делает один свежий снимок и продолжает
+        работу уже по нему. Это лучше, чем отменять безопасное действие
+        только из-за задержки восприятия.
+        """
+        if self.guard is None:
+            return screen
+
+        fresh, reason = self.guard.refresh_if_stale(screen, max_age=max_age)
+        if fresh is None:
+            logger.warning(f"[{self.name}] Действие отменено: {reason}")
+            return None
+        if reason == "refreshed":
+            logger.info(f"[{self.name}] Перед действием сделан свежий кадр.")
+        return fresh
+
     def mark_executed(self) -> None:
         """Обновление времени последнего выполнения и запись успеха."""
         self.last_run_time = time.time()

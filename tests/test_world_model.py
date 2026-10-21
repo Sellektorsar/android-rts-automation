@@ -43,6 +43,20 @@ class WorldModelTimerTest(unittest.TestCase):
         summary = self.model.get_summary()
         self.assertIn("builders=", summary)
 
+    def test_upgrade_uses_current_level_from_panel(self):
+        self.model.state["buildings"]["wall"]["level"] = 4
+        self.assertTrue(self.model.start_upgrade("wall", 60, current_level=4))
+        self.model.state["builders"]["builder_1"]["timer_end"] = time.time() - 1
+        self.model.clean_expired_timers()
+        self.assertEqual(self.model.state["buildings"]["wall"]["level"], 5)
+
+    def test_upgrade_without_level_uses_existing(self):
+        self.model.state["buildings"]["wall"]["level"] = 5
+        self.assertTrue(self.model.start_upgrade("wall", 60))
+        self.model.state["builders"]["builder_1"]["timer_end"] = time.time() - 1
+        self.model.clean_expired_timers()
+        self.assertEqual(self.model.state["buildings"]["wall"]["level"], 6)
+
 
 if __name__ == "__main__":
     unittest.main()
