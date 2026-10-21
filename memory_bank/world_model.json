@@ -1,0 +1,115 @@
+{
+  "account": {
+    "castle_level": 4,
+    "power": 3599,
+    "lord_level": 2,
+    "gems": 110,
+    "vip_level": 1,
+    "has_second_builder": false,
+    "current_chapter": 2,
+    "current_chapter_title": "Развитие технологий",
+    "beast_unlocked": "Panda"
+  },
+  "builders": {
+    "builder_1": {
+      "busy": false,
+      "target": null,
+      "timer_end": null
+    },
+    "builder_2": {
+      "busy": false,
+      "target": null,
+      "timer_end": null
+    }
+  },
+  "buildings": {
+    "castle": {
+      "level": 4,
+      "upgrading": false,
+      "timer_end": null
+    },
+    "wall": {
+      "level": 3,
+      "upgrading": false,
+      "timer_end": null
+    },
+    "barracks": {
+      "level": 1,
+      "count": 1,
+      "upgrading": false,
+      "timer_end": null
+    },
+    "farm": {
+      "level": 1,
+      "upgrading": false,
+      "timer_end": null
+    },
+    "sawmill": {
+      "level": 1,
+      "upgrading": false,
+      "timer_end": null
+    }
+  },
+  "research": {
+    "active": false,
+    "target": null,
+    "timer_end": null
+  },
+  "training": {
+    "infantry": {
+      "active": false,
+      "timer_end": null
+    },
+    "cavalry": {
+      "active": false,
+      "timer_end": null
+    },
+    "archers": {
+      "active": false,
+      "timer_end": null
+    },
+    "mages": {
+      "active": false,
+      "timer_end": null
+    }
+  },
+  "resources": {
+    "food": 105000,
+    "wood": 105000,
+    "stone": 0,
+    "iron": 0
+  },
+  "cached_coordinates": {
+    "castle": {
+      "x": 200,
+      "y": 1150,
+      "hits": 1,
+      "misses": 0
+    },
+    "builder_idle": {
+      "x": 75,
+      "y": 402,
+      "hits": 1,
+      "misses": 0
+    },
+    "quest_hammer": {
+      "x": 70,
+      "y": 565,
+      "hits": 1,
+      "misses": 0
+    },
+    "world_map_toggle": {
+      "x": 115,
+      "y": 2355,
+      "hits": 1,
+      "misses": 0
+    },
+    "royal_road_crown": {
+      "x": 75,
+      "y": 1960,
+      "hits": 5,
+      "misses": 0
+    }
+  },
+  "last_updated": 1792574000.0
+}

@@ -1,0 +1,118 @@
+# База координат и зон интерфейса (Разрешение: 1080 x 2436)
+
+device:
+  resolution: [1080, 2436]
+  orientation: portrait
+
+screens:
+  campaign_map:
+    header:
+      title_pos: [540, 55]
+      back_button: [60, 55]
+      help_icon: [950, 55]
+    modes:
+      normal: [800, 130]
+      hard: [920, 130]
+    stages:
+      stage_1:
+        center: [730, 2070]
+        radius: 60
+        type: portal_blue
+      stage_2:
+        center: [275, 2000]
+        radius: 60
+        type: portal_blue
+      stage_3:
+        center: [245, 1450]
+      stage_4:
+        center: [420, 1310]
+      stage_5:
+        center: [750, 1440]
+      stage_6:
+        center: [760, 1180]
+      stage_7:
+        center: [870, 880]
+      stage_8:
+        center: [790, 680]
+      stage_9:
+        center: [440, 360]
+      stage_10:
+        center: [260, 160]
+
+  stage_briefing:
+    title_pos: [540, 950]
+    skill_preview: [365, 1115]
+    rewards_row: [500, 1340]
+    challenge_button: [558, 1825]
+
+  stage_victory:
+    banner_pos: [540, 900]
+    rewards_row: [500, 1240]
+    continue_tap: [540, 1850]
+
+  dialogue:
+    text_box_area:
+      x_min: 100
+      y_min: 2080
+      x_max: 980
+      y_max: 2400
+    safe_tap: [540, 2250]
+    indicator: [940, 2380]
+
+  quests_menu:
+    header:
+      back_button: [80, 160]
+      help_icon: [930, 160]
+    tabs:
+      growth_quests: [355, 340]
+      daily_quests: [640, 340]
+    categories:
+      weapon_quests: [540, 490]
+      construction_quests: [540, 1680]
+      other_quests: [540, 1745]
+    claim_reward_button:
+      template: "btn_collect_reward"
+      sample_pos: [894, 614]
+
+  city_view:
+    hud_top:
+      lord_avatar: [90, 192]
+      lord_power: [285, 185]
+      lord_vip: [240, 240]
+      lord_energy: [240, 120]
+      food: [415, 120]
+      wood: [580, 120]
+      gold: [815, 185]
+      gems: [1010, 185]
+    left_hud:
+      builder_slot_1: [75, 402]
+      quest_guide_hammer: [70, 565]
+    bottom_nav:
+      world_map_toggle: [115, 2355]
+      quests: [295, 2375]
+      bag: [455, 2375]
+      mail: [615, 2375]
+      alliance: [770, 2375]
+      lord: [930, 2375]
+      chat_ticker: [540, 2285]
+    right_hud:
+      demon_invasion: [925, 695]
+    plots:
+      plot_a: [670, 1320]
+      plot_b: [920, 1440]
+      plot_c: [860, 1650]
+      plot_d: [670, 1830]
+      plot_e: [340, 1920]
+      plot_f: [560, 2060]
+    buildings:
+      castle: [200, 1150]
+      castle_level_badge: [160, 1220]
+      locked_temple: [590, 350]
+    alliance_help_bubble:
+      search_region: [750, 1800, 1050, 2200]
+
+  popups:
+    close_button_candidate_zones:
+      - [960, 220]    # Верхний правый угол типового модального окна
+      - [920, 380]    # Уменьшенное окно акции
+      - [80, 80]      # Верхний левый угол (кнопка назад/крестик)

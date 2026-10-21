@@ -1,0 +1,38 @@
+mode: observe_only  # observe_only -> assisted_low_risk -> bounded_autonomy
+device:
+  require_authorized_adb: true
+  require_unlocked_screen: true
+  require_known_orientation: true
+  stop_on_disconnect: true
+perception:
+  minimum_screen_confidence: 0.90
+  minimum_critical_element_confidence: 0.93
+  require_fresh_frame_before_action: true
+  require_new_frame_after_action: true
+  unknown_screen_policy: stop_and_reobserve
+actions:
+  max_actions_per_session: 80
+  max_unverified_actions: 0
+  verification_timeout_seconds: 12
+  retries_on_ambiguous_result: 0
+risk_policy:
+  free_claims: allow_if_verified
+  navigation: allow_if_verified
+  construction_or_research: require_cost_and_prerequisite_check
+  premium_currency: require_explicit_owner_approval
+  real_money_purchase: deny
+  player_pvp: require_explicit_owner_approval
+  teleportation: require_explicit_owner_approval
+  rare_item_consumption: require_explicit_owner_approval
+  alliance_change: require_explicit_owner_approval
+  send_message: require_explicit_owner_approval
+  captcha_or_security_challenge: stop_and_request_owner
+  anti_cheat_bypass: deny
+  memory_injection_or_packet_tampering: deny
+safety:
+  stop_on_unknown_dialog: true
+  stop_on_login_or_payment_screen: true
+  stop_on_low_confidence: true
+  stop_after_consecutive_failures: 2
+  keep_audit_log: true
+  redact_secrets: true

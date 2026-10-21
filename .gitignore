@@ -1,0 +1,28 @@
+# Python & virtual environment
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+bot.log
+
+# IDE & workspace files
+.idea/
+.vscode/
+.gemini/
+
+# Temporary reference architectures
+temp_4x_agent/
+temp_android_harness/
+temp_esp32_agent/
+
+# Root-level debug images and screenshots (preserve templates in assets/)
+/*.png
+/*.jpg
+/*.jpeg
+/*.bmp
+
+# Whitelist assets directory
+!assets/**

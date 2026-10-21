@@ -1,0 +1,6 @@
+{
+  "name": "war-and-order-agent-skills",
+  "version": "1.0.0",
+  "skill_count": 11,
+  "note": "Starter pack; calibrate to real device screenshots. Not a prebuilt bot."
+}

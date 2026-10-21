@@ -1,0 +1,72 @@
+# Конфигурация бота War & Order (WaO_bot)
+
+device:
+  adb_path: "C:\\platform-tools\\adb.exe"
+  ip: "192.168.31.156"
+  port: 33565
+  timeout_sec: 10
+  # Режим ввода: "adb" (Bezier curves + Gaussian jitter) или "esp32_ble" (аппаратный BLE HID контроллер)
+  input_mode: "adb"
+  esp32:
+    port: "COM3"
+    baudrate: 115200
+    calibration_x: 1000
+    calibration_y: 1000
+
+game:
+  package: "com.camelgames.superking"
+  activity: ".UnityPlayerActivity"
+
+anti_detect:
+  # Случайное смещение клика от центра кнопки (в пикселях)
+  click_jitter_radius: 8
+  # Случайные задержки (в секундах) между микро-действиями
+  min_delay: 0.6
+  max_delay: 1.4
+  # Использовать сглаженные свайпы вместо мгновенных
+  smooth_swipes: true
+
+tasks:
+  popup_closer:
+    enabled: true
+    interval_sec: 5
+
+  alliance_help:
+    enabled: true
+    interval_sec: 60
+
+  city_harvest:
+    enabled: true
+    interval_sec: 180
+
+  chapter_quest:
+    enabled: true
+    interval_sec: 15
+
+  building_upgrade:
+    enabled: true
+    interval_sec: 20
+
+  barracks_train:
+    enabled: true
+    interval_sec: 300
+
+  gathering:
+    enabled: true
+    interval_sec: 600
+    preferred_resources: ["food", "wood", "stone", "iron"]
+
+policy_and_safety:
+  mode: "bounded_autonomy" # observe_only -> assisted_low_risk -> bounded_autonomy
+  require_fresh_frame_before_action: true
+  require_frame_change_verification: true
+  max_consecutive_failures: 2
+  stop_on_unknown_dialog: true
+  stop_on_payment_screen: true
+  risk_gates:
+    real_money_purchase: "deny"
+    premium_currency: "require_owner_approval"
+    player_pvp: "require_owner_approval"
+    teleportation: "require_owner_approval"
+    rare_item_consumption: "require_owner_approval"
+    social_messaging: "deny"

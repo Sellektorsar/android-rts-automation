@@ -1,0 +1,21 @@
+game:
+  name: War and Order
+  package_name: com.camelgames.superking  # verify on your device
+  profile_version: 1
+device_profile:
+  screenshot_width: null
+  screenshot_height: null
+  orientation: portrait
+  dpi: null
+  calibration_date: null
+screen_states:
+  city: {anchors: [], confidence_threshold: 0.90}
+  world_map: {anchors: [], confidence_threshold: 0.90}
+  hero_or_army: {anchors: [], confidence_threshold: 0.90}
+  research: {anchors: [], confidence_threshold: 0.90}
+  training: {anchors: [], confidence_threshold: 0.90}
+  alliance: {anchors: [], confidence_threshold: 0.90}
+  event: {anchors: [], confidence_threshold: 0.90}
+  unknown: {action: stop_and_reobserve}
+elements: {}
+# Do not guess coordinates. Populate only from actual calibrated screenshots.
