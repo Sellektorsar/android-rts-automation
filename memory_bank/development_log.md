@@ -44,6 +44,7 @@
   0 recoveries, `world=castle=5, builders=1`.
 - `main.py --duration 60`: 14 тиков, 0 действий, 0 unknown, 0 recoveries.
   Только известные предупреждения об отсутствующих шаблонах.
+- Коммит: `03cbd8f` — «Stabilize actions and link building upgrade timers».
 
 ### Следующее
 

@@ -80,6 +80,7 @@
 
 ## 🧪 Последние проверки
 
+- Коммит `03cbd8f` — «Stabilize actions and link building upgrade timers».
 - `python -m unittest discover -s tests -q` — **41 тест, OK**.
 - `python -m compileall -q src tools tests` — OK.
 - `healthcheck.py` — ADB/экран/игра/восприятие в норме: яркость 116,
