@@ -170,6 +170,11 @@
   `actions=0`, `unknown=0`, `recoveries=0`; ADB не отвалился, чёрных кадров
   и ложных экранов нет. Экран был закреплён включённым, настройки сна
   восстановлены после завершения.
+- **FastCapture авто-перезапуск (2026-10-22):** добавлен флаг `_restart_requested`,
+  сбрасываемый в `read()` при EOF reader-потока (после `--time-limit` или обрыва
+  `screenrecord`); автозапуск `restart()` с инкрементом `stats.restarts`.
+  Контракт-тесты: `test_restart_not_requested_by_default`,
+  `test_read_without_tools_does_not_crash_on_restart_request`. 60 тестов OK.
 - **Быстрый захват (живой тест):** `tools/probe_fast_capture.py --frames 30`
   — 30 кадров, `2.126 с`, **14.11 FPS**, кадр `540×1218`, классификация
   `city_view` с уверенностью `0.991`. Поток пока не встроен в боевой цикл.
