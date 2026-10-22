@@ -20,6 +20,8 @@
     "stage_objective": "Выжить в течение 120 сек.",
     "stage_new_skill": "Удар дракона",
     "stage_briefing_verified": true,
+    "combat_verified": true,
+    "combat_exit_verified": true,
     "combat_started": false
   },
   "builders": {

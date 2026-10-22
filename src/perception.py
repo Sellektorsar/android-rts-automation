@@ -125,6 +125,15 @@ DEFAULT_PROFILES: Tuple[ScreenProfile, ...] = (
         keywords=("выбор навыка", "подтвердить"),
     ),
     ScreenProfile(
+        state=GameState.TUTORIAL_BATTLE,
+        priority=12,
+        # Кнопка паузы в левом верхнем углу боевого экрана. Якорь
+        # проверен на реальном кадре этапа 6 и не срабатывает на городе,
+        # карте кампании, брифинге, Королевской Дороге и заданиях.
+        groups=((Anchor("battle_pause", 0.90, (0.0, 0.0, 0.20, 0.12)),),),
+        keywords=("победить лидера", "выжить в течение", "уничтожить"),
+    ),
+    ScreenProfile(
         state=GameState.VICTORY_SCREEN,
         priority=15,
         groups=((Anchor("victory_banner", 0.84, (0.0, 0.25, 1.0, 0.55)),),),

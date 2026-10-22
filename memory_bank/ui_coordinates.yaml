@@ -37,6 +37,9 @@ screens:
       difficulty_hard: [1010, 205]
       stage_7: [955, 1200]
       stage_7_template: "campaign_stage_7"
+      stage_7_dark: [943, 1416]          # карта затемнена диалогом босса
+      stage_7_dark_template: "campaign_stage_7_dark"
+      stage_7_search_region: [756, 852, 324, 1218]
       current_difficulty: "Простой"
       completed_stages_visible: [1, 2, 3, 4, 5]
       active_stage: 7
@@ -87,7 +90,40 @@ screens:
         speedup: "5 min x1"
         food: "1.0K x2"
         wood: "1.0K x2"
-      # Кнопку «Испытание» не нажимать до появления боевого пайплайна.
+      hero_test_dialog:
+        # Появляется после challenge_button; OCR ненадёжен.
+        continue_button: [765, 1345]        # зелёное «Испытание»
+        continue_template: "btn_hero_test_confirm"
+        search_region: [540, 1218, 486, 292]
+        threshold: 0.95
+        forbidden_blue_upgrade: [315, 1340] # «Укрепление героизма» — не нажимать
+
+  battle:
+    # Проверено на живом бою этапа 7, 2026-10-22.
+    state: "tutorial_battle"
+    pause_button: [62, 150]
+    pause_template: "battle_pause"
+    pause_template_fast: "battle_pause_fast"   # для кадров 540x1218
+    pause_threshold: 0.90
+    pause_menu:
+      title: "Пауза"
+      # Нижняя строка: Выйти | Начать сначала | Продолжить | Параметры.
+      exit_button: [207, 1552]
+      exit_template: "btn_battle_exit"
+      exit_search_region: [54, 1340, 324, 341]
+      exit_threshold: 0.90
+      # Нажатие «Выйти» сразу возвращает на карту кампании, без оплаты.
+      for_exit_state: "campaign_map"
+      forbidden_buttons:
+        - "Начать сначала"
+        - "Продолжить"
+        - "Параметры"
+        - "Повторить"
+        - "Купить"
+    ocr_hazard: "«Выжить в течение …» распознаётся как «BbIKMTb» (Выйти)"
+    result_flow:
+      exit_to: "campaign_map"
+      then_back_to: "city_view"
 
   stage_victory:
     banner_pos: [540, 900]
