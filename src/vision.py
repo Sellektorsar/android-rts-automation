@@ -5,7 +5,7 @@
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 import cv2
 import numpy as np
 from loguru import logger
@@ -131,6 +131,68 @@ class Vision:
             center_y = int(round((offset_y + max_loc[1] + th / 2) / scale))
             return center_x, center_y, float(max_val)
 
+        return None
+
+    def find_template_multiscale(
+        self,
+        screen: np.ndarray,
+        template_name: str,
+        threshold: float = 0.8,
+        region: Optional[Tuple[int, int, int, int]] = None,
+        scales: Optional[Sequence[float]] = None,
+    ) -> Optional[Tuple[int, int, float, float]]:
+        """
+        Поиск шаблона с перебором его РАЗМЕРА относительно кадра.
+
+        В отличие от `find_template(scale=...)`, здесь масштабируется сам
+        шаблон, а не экран: это нужно, когда камера игры изменила размер
+        объекта (зум/панорама). Вернуть лучшее совпадение выше порога:
+        (center_x, center_y, confidence, relative_scale).
+        """
+        template = self.templates_cache.get(template_name)
+        if template is None:
+            logger.debug(f"Шаблон '{template_name}' отсутствует в кэше")
+            return None
+        if scales is None:
+            scales = (0.8, 0.9, 1.0, 1.1, 1.2)
+
+        sh, sw = screen.shape[:2]
+        if region:
+            rx, ry, rw, rh = region
+            rx = max(0, min(rx, sw - 1))
+            ry = max(0, min(ry, sh - 1))
+            rw = max(1, min(rw, sw - rx))
+            rh = max(1, min(rh, sh - ry))
+            search_screen = screen[ry : ry + rh, rx : rx + rw]
+        else:
+            rx, ry = 0, 0
+            search_screen = screen
+        area_sh, area_sw = search_screen.shape[:2]
+
+        best: Optional[Tuple[int, int, float, float]] = None
+        th0, tw0 = template.shape[:2]
+        for rel in scales:
+            tw = int(round(tw0 * rel))
+            thh = int(round(th0 * rel))
+            if tw < 2 or thh < 2 or tw > area_sw or thh > area_sh:
+                continue
+            scaled = cv2.resize(
+                template,
+                (tw, thh),
+                interpolation=cv2.INTER_AREA if rel < 1.0 else cv2.INTER_LINEAR,
+            )
+            res = cv2.matchTemplate(search_screen, scaled, cv2.TM_CCOEFF_NORMED)
+            _, max_val, _, max_loc = cv2.minMaxLoc(res)
+            if best is None or max_val > best[2]:
+                best = (
+                    int(round(rx + max_loc[0] + tw / 2)),
+                    int(round(ry + max_loc[1] + thh / 2)),
+                    float(max_val),
+                    float(rel),
+                )
+
+        if best is not None and best[2] >= threshold:
+            return best
         return None
 
     def find_all(

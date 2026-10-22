@@ -1,5 +1,6 @@
 import unittest
 
+import cv2
 import numpy as np
 
 from src.vision import Vision
@@ -32,6 +33,57 @@ class VisionFindAllTest(unittest.TestCase):
         )
         centers = {(x, y) for x, y, _ in matches}
         self.assertEqual(centers, {(70, 60), (40, 130)})
+
+
+class VisionMultiscaleTest(unittest.TestCase):
+    """Шаблон вставляется в кадр в другом размере — find_template_multiscale
+    должен найти его и вернуть относительный масштаб."""
+
+    def setUp(self):
+        self.vision = Vision(templates_dir="assets")
+        rng = np.random.default_rng(7)
+        self.template = rng.integers(0, 256, (20, 30, 3), dtype=np.uint8)
+        self.vision.add_template("test_ms", self.template)
+
+    def test_finds_scaled_up_template(self):
+        scaled = cv2.resize(self.template, (45, 30), interpolation=cv2.INTER_LINEAR)
+        frame = np.zeros((300, 400, 3), dtype=np.uint8)
+        frame[90:120, 150:195] = scaled
+        found = self.vision.find_template_multiscale(
+            frame, "test_ms", threshold=0.9, scales=(0.8, 1.0, 1.5)
+        )
+        self.assertIsNotNone(found)
+        cx, cy, conf, rel = found
+        self.assertAlmostEqual(cx, 172, delta=2)
+        self.assertAlmostEqual(cy, 105, delta=2)
+        self.assertGreaterEqual(conf, 0.9)
+        self.assertEqual(rel, 1.5)
+
+    def test_finds_scaled_down_template_in_region(self):
+        scaled = cv2.resize(self.template, (15, 10), interpolation=cv2.INTER_AREA)
+        frame = np.zeros((300, 400, 3), dtype=np.uint8)
+        frame[200:210, 250:265] = scaled
+        found = self.vision.find_template_multiscale(
+            frame,
+            "test_ms",
+            threshold=0.9,
+            region=(200, 150, 200, 150),
+            scales=(1.0, 0.5),
+        )
+        self.assertIsNotNone(found)
+        cx, cy, conf, rel = found
+        self.assertAlmostEqual(cx, 257, delta=2)
+        self.assertAlmostEqual(cy, 205, delta=2)
+        self.assertGreaterEqual(conf, 0.9)
+        self.assertEqual(rel, 0.5)
+
+    def test_returns_none_below_threshold(self):
+        frame = np.zeros((300, 400, 3), dtype=np.uint8)
+        self.assertIsNone(
+            self.vision.find_template_multiscale(
+                frame, "test_ms", threshold=0.9, scales=(1.0,)
+            )
+        )
 
 
 class VisionDiffTest(unittest.TestCase):

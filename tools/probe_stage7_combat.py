@@ -45,6 +45,9 @@ from src.perception import ScreenClassifier, looks_like_payment
 from src.vision import Vision
 
 PORTAL_TEMPLATE = "portal_campaign"
+# Камера города может менять размер портала, поэтому ищем шаблон в
+# диапазоне его относительных размеров (0.70–1.20).
+PORTAL_SCALES = tuple(round(x / 100, 2) for x in range(70, 121, 5))
 STAGE7_TEMPLATE = "campaign_stage_7"
 CHALLENGE_TEMPLATE = "btn_stage_challenge"
 PAUSE_TEMPLATE = "battle_pause"
@@ -178,21 +181,28 @@ def _open_stage7(
     height, width = frame.shape[:2]
     # Портал кампании — синий анимированный объект в нижней части города.
     # Камера города может быть смещена/приближена, а свечение меняется,
-    # поэтому ищем в широкой нижней области и допускаем более низкую
-    # корреляцию. В этой области нет других похожих синих порталов.
-    portal = _match_center(
-        vision,
+    # поэтому ищем в широкой нижней области, допускаем более низкую
+    # корреляцию и перебираем размер шаблона: камера города может
+    # приближать/отдалять портал. Совпадение при масштабе 1.0 даёт
+    # только ~0.58, при 1.15 — ~0.63; в этой области нет других похожих
+    # синих порталов.
+    multi = vision.find_template_multiscale(
         frame,
         PORTAL_TEMPLATE,
         threshold=0.60,
         region=(int(width * 0.25), int(height * 0.45), int(width * 0.50), int(height * 0.40)),
+        scales=PORTAL_SCALES,
     )
-    if portal is None:
+    if multi is None:
         result["error"] = "portal_not_found"
         return False
+    px, py, conf, rel = multi
+    portal = {"x": px, "y": py, "confidence": round(conf, 3), "scale": rel}
     result["portal"] = portal
-    # Проверенная кликабельная точка — основание портала.
-    tap_x, tap_y = portal["x"], portal["y"] + 98
+    # Проверенная кликабельная точка — основание портала; смещение
+    # масштабируется вместе с размером портала (базой считали +98 px
+    # при масштабе 1.0).
+    tap_x, tap_y = px, py + int(round(98 * rel))
     result["portal_tap"] = [tap_x, tap_y]
     client.tap(tap_x, tap_y)
     time.sleep(3.0)
