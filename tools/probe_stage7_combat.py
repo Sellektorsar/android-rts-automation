@@ -324,7 +324,7 @@ def _wait_for_battle(
     while time.time() - started < timeout_sec:
         frame = None
         if fast is not None:
-            frame = fast.read(timeout_sec=0.9)
+            frame = fast.read(timeout_sec=0.1)
         if frame is not None:
             frames += 1
             last_frame = frame
@@ -947,6 +947,10 @@ def main() -> int:
         # перекрыть кнопку паузы и украсть первый тап.
         client.dismiss_heads_up()
         time.sleep(0.5)
+        # Сливаем устаревшие кадры брифинга, чтобы поток после нажатия
+        # «Испытание» начинался с боевых кадров, а не со старых.
+        if fast is not None:
+            fast.drain(timeout_sec=0.2)
         logger.info(
             f"[Combat] Нажимаем «Испытание» ({challenge.get('x')}, {challenge.get('y')})."
         )

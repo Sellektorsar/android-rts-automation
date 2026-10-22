@@ -8,12 +8,18 @@
 Модуль не запускает бой и не нажимает кнопки. Это только транспорт кадров.
 Если `screenrecord`/`ffmpeg` недоступны, вызывающий код должен откатиться
 на `AdbClient.get_screenshot()`.
+
+Поток читается фоновым потоком: очередь хранит только самый свежий кадр,
+устаревшие кадры отбрасываются. Это позволяет `read()` быстро получить
+актуальный кадр без блокировки на `stdout.read`.
 """
 
 from __future__ import annotations
 
+import queue
 import shutil
 import subprocess
+import threading
 import time
 from dataclasses import dataclass
 from typing import Optional
@@ -56,7 +62,9 @@ class FastCapture:
         self.ffmpeg_path = ffmpeg_path or shutil.which("ffmpeg")
         self._adb_proc: Optional[subprocess.Popen] = None
         self._ffmpeg_proc: Optional[subprocess.Popen] = None
-        self._pending = b""
+        self._queue: "queue.Queue[np.ndarray]" = queue.Queue(maxsize=1)
+        self._stop_event = threading.Event()
+        self._reader_thread: Optional[threading.Thread] = None
         self.stats = FastCaptureStats()
 
     @property
@@ -129,8 +137,13 @@ class FastCapture:
             # ffmpeg владеет копией stdout ADB; закрываем свою ссылку,
             # чтобы не блокировать пайп.
             self._adb_proc.stdout.close()
-            self._pending = b""
+            self._queue = queue.Queue(maxsize=1)
+            self._stop_event.clear()
             self.stats = FastCaptureStats(started_at=time.time())
+            self._reader_thread = threading.Thread(
+                target=self._reader_loop, name="FastCaptureReader", daemon=True
+            )
+            self._reader_thread.start()
             logger.info(
                 f"[FastCapture] Поток запущен: {self.width}x{self.height}, "
                 f"screenrecord до {self.record_time_limit}с."
@@ -141,30 +154,66 @@ class FastCapture:
             self.stop()
             return False
 
-    def read(self, timeout_sec: float = 2.0) -> Optional[np.ndarray]:
-        """Прочитать один кадр. None — поток закончился/не запущен."""
-        if self._ffmpeg_proc is None or self._ffmpeg_proc.stdout is None:
-            return None
-
-        deadline = time.time() + max(0.1, timeout_sec)
-        while len(self._pending) < self.frame_bytes and time.time() < deadline:
-            chunk = self._ffmpeg_proc.stdout.read(self.frame_bytes - len(self._pending))
+    def _reader_loop(self) -> None:
+        """Фоновое чтение: накапливает байты и кладёт готовый кадр в очередь."""
+        pending = b""
+        proc = self._ffmpeg_proc
+        if proc is None or proc.stdout is None:
+            return
+        stdout = proc.stdout
+        while not self._stop_event.is_set():
+            try:
+                chunk = stdout.read(self.frame_bytes - len(pending) or 1)
+            except Exception:
+                break
             if not chunk:
-                return None
-            self._pending += chunk
+                break
+            pending += chunk
+            while len(pending) >= self.frame_bytes and not self._stop_event.is_set():
+                raw = pending[: self.frame_bytes]
+                pending = pending[self.frame_bytes :]
+                try:
+                    frame = np.frombuffer(raw, dtype=np.uint8).reshape(
+                        (self.height, self.width, 3)
+                    )
+                except ValueError:
+                    # Выравнивание сбито — сбросить и продолжить.
+                    pending = b""
+                    break
+                # Отбросить устаревший кадр, если очередь полна.
+                try:
+                    self._queue.put_nowait(frame)
+                except queue.Full:
+                    try:
+                        self._queue.get_nowait()
+                    except queue.Empty:
+                        pass
+                    try:
+                        self._queue.put_nowait(frame)
+                    except queue.Full:
+                        pass
+                self.stats.frames += 1
+                self.stats.last_frame_at = time.time()
 
-        if len(self._pending) < self.frame_bytes:
-            # Частичный кадр сохраняем до следующего вызова, чтобы не
-            # сбить выравнивание потока.
+    def read(self, timeout_sec: float = 2.0) -> Optional[np.ndarray]:
+        """Прочитать самый свежий готовый кадр. None — нет кадра/поток мёртв."""
+        if self._ffmpeg_proc is None or self._reader_thread is None:
+            return None
+        try:
+            return self._queue.get(timeout=max(0.01, timeout_sec))
+        except queue.Empty:
             return None
 
-        raw = self._pending[: self.frame_bytes]
-        self._pending = self._pending[self.frame_bytes :]
-        frame = np.frombuffer(raw, dtype=np.uint8)
-        frame = frame.reshape((self.height, self.width, 3))
-        self.stats.frames += 1
-        self.stats.last_frame_at = time.time()
-        return frame
+    def drain(self, timeout_sec: float = 0.5) -> Optional[np.ndarray]:
+        """Прочитать и отбросить все доступные кадры, вернуть последний."""
+        last: Optional[np.ndarray] = None
+        deadline = time.time() + max(0.01, timeout_sec)
+        while time.time() < deadline:
+            frame = self.read(timeout_sec=0.05)
+            if frame is None:
+                break
+            last = frame
+        return last
 
     def restart(self) -> bool:
         """Перезапуск после `--time-limit` или обрыва потока."""
@@ -172,6 +221,11 @@ class FastCapture:
         return self.start()
 
     def stop(self) -> None:
+        self._stop_event.set()
+        thread = self._reader_thread
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=2.0)
+        self._reader_thread = None
         for proc in (self._ffmpeg_proc, self._adb_proc):
             if proc is None:
                 continue
