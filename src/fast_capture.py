@@ -65,6 +65,7 @@ class FastCapture:
         self._queue: "queue.Queue[np.ndarray]" = queue.Queue(maxsize=1)
         self._stop_event = threading.Event()
         self._reader_thread: Optional[threading.Thread] = None
+        self._restart_requested = False
         self.stats = FastCaptureStats()
 
     @property
@@ -161,12 +162,15 @@ class FastCapture:
         if proc is None or proc.stdout is None:
             return
         stdout = proc.stdout
-        while not self._stop_event.is_set():
+        eof = False
+        while not self._stop_event.is_set() and not eof:
             try:
                 chunk = stdout.read(self.frame_bytes - len(pending) or 1)
             except Exception:
                 break
             if not chunk:
+                # Поток завершился (--time-limit или обрыв): ставим флаг и выходим.
+                eof = True
                 break
             pending += chunk
             while len(pending) >= self.frame_bytes and not self._stop_event.is_set():
@@ -194,15 +198,33 @@ class FastCapture:
                         pass
                 self.stats.frames += 1
                 self.stats.last_frame_at = time.time()
+        if eof and not self._stop_event.is_set():
+            logger.info("[FastCapture] Чтение потока завершилось (EOF) — запрос авто-перезапуска.")
+            self._restart_requested = True
 
     def read(self, timeout_sec: float = 2.0) -> Optional[np.ndarray]:
         """Прочитать самый свежий готовый кадр. None — нет кадра/поток мёртв."""
-        if self._ffmpeg_proc is None or self._reader_thread is None:
-            return None
-        try:
-            return self._queue.get(timeout=max(0.01, timeout_sec))
-        except queue.Empty:
-            return None
+        frame: Optional[np.ndarray] = None
+        if self._ffmpeg_proc is not None and self._reader_thread is not None:
+            try:
+                frame = self._queue.get(timeout=max(0.01, timeout_sec))
+            except queue.Empty:
+                frame = None
+        if (
+            frame is None
+            and self._restart_requested
+            and not self._stop_event.is_set()
+        ):
+            # Поток оборвался (EOF при --time-limit) — перезапускаем автоматически.
+            self._restart_requested = False
+            if (
+                self.available
+                and self._ffmpeg_proc is not None
+                and self._reader_thread is not None
+            ):
+                logger.info("[FastCapture] Авто-перезапуск потока после EOF.")
+                self.restart()
+        return frame
 
     def drain(self, timeout_sec: float = 0.5) -> Optional[np.ndarray]:
         """Прочитать и отбросить все доступные кадры, вернуть последний."""

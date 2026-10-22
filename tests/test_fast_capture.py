@@ -23,6 +23,17 @@ class FastCaptureContractTest(unittest.TestCase):
         self.assertIsNone(capture._adb_proc)
         self.assertIsNone(capture._ffmpeg_proc)
 
+    def test_restart_not_requested_by_default(self):
+        capture = FastCapture("adb", "127.0.0.1:5555")
+        self.assertFalse(capture._restart_requested)
+        self.assertIsNone(capture.read(timeout_sec=0.05))
+
+    def test_read_without_tools_does_not_crash_on_restart_request(self):
+        capture = FastCapture("adb", "127.0.0.1:5555")
+        capture._restart_requested = True
+        self.assertIsNone(capture.read(timeout_sec=0.05))
+        self.assertFalse(capture._restart_requested)
+
 
 if __name__ == "__main__":
     unittest.main()
