@@ -37,6 +37,7 @@ from src.tasks.chapter_quest import ChapterQuestTask
 from src.tasks.city_gifts import CityGiftsTask
 from src.tasks.city_harvest import CityHarvestTask
 from src.tasks.popup_closer import PopupCloserTask
+from src.tasks.quest_rewards import QuestRewardsTask
 from src.tasks.troop_training import TroopTrainingTask
 from src.vision import Vision
 from src.workflow_engine import WorkflowEngine
@@ -174,6 +175,16 @@ class BotEngine:
                     self.client,
                     self.vision,
                     interval_sec=task_cfg.get("barracks_train", {}).get("interval_sec", 120),
+                    reflection=self.reflection,
+                )
+            )
+
+        if task_cfg.get("quest_rewards", {}).get("enabled", False):
+            self.tasks.append(
+                QuestRewardsTask(
+                    self.client,
+                    self.vision,
+                    interval_sec=task_cfg.get("quest_rewards", {}).get("interval_sec", 45),
                     reflection=self.reflection,
                 )
             )

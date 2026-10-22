@@ -135,6 +135,7 @@ screens:
       gems: [1010, 185]
     left_hud:
       builder_slot_1: [75, 402]
+      # DANGER: открывает платное окно «Разблокировать золотой молот»
       quest_guide_hammer: [70, 565]
     bottom_nav:
       world_map_toggle: [115, 2355]

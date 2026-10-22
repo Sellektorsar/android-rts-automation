@@ -11,6 +11,23 @@
   (`btn_close_round`, `btn_close_gold`, `bubble_stone`, `bubble_iron`,
   `bubble_wishing_well`).
 
+## 2026-10-22 — Сбор наград ежедневных заданий
+
+- `src/tasks/quest_rewards.py`: из города открывает `quests_menu`, ищет
+  `btn_claim_green` в правой колонке, нажимает одну верхнюю награду и
+  возвращается в город (до 4 `Back`, потому что тост «Уровень повышен»
+  съедает одно нажатие).
+- `main.py --duration 60` с включённой `quest_rewards`: `actions=1`,
+  `unknown=0`, `recoveries=0`. Нажата `(884, 744)`; после неё OCR показал
+  `+477` и «Уровень повышен! 3→4», оплата не открывалась.
+- `tools/probe_quest_claim.py` — отдельный безопасный зонд одного нажатия
+  с сохранением `logs/inspect/quest_claim_after.png`.
+- `tools/probe_city_guide.py`: квестовый молот `btn_quest_hammer`
+  `(70, 565)` открывает `popup_offer` «Разблокировать золотой молот»;
+  это премиальное окно, кнопка помечена как **не нажимать**. Шаблон
+  `btn_builder_idle` сейчас не найден, зонд ничего не нажимал.
+- `python -m unittest discover -s tests -q` — **50 тестов, OK**.
+
 ## 2026-10-22 — Экран ежедневных заданий
 
 - `tools/probe_quests.py`: `city_view` → тап по `btn_nav_quests`

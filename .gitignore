@@ -11,6 +11,8 @@ bot.log
 # Runtime logs and calibration screenshots.
 # Могут содержать данные аккаунта или чужих приложений — не коммитим.
 logs/
+# Адаптивная история успехов/сбоев задач — рантайм-состояние.
+memory_bank/reflections.json
 
 # IDE & workspace files
 .idea/

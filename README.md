@@ -79,7 +79,7 @@ WaO_bot/
 │   ├── reflection.py           # Журнал успехов/ошибок задач
 │   ├── human_input.py          # Случайные задержки и человекоподобный ввод
 │   ├── fast_capture.py         # Быстрый поток: screenrecord + ffmpeg (~14 FPS)
-│   └── tasks/                  # Задачи: popup_closer, city_harvest, ...
+│   └── tasks/                  # Задачи: popup_closer, quest_rewards, city_harvest, ...
 ├── tools/
 │   ├── inspect_state.py        # Калибровка: снимок + классификация + HUD
 │   ├── healthcheck.py          # Проверка ADB/экрана/игры/восприятия
@@ -87,6 +87,8 @@ WaO_bot/
 │   ├── probe_royal_road.py     # Безопасный зонд главы 4 (без боя)
 │   ├── probe_campaign_map.py   # Безопасный зонд карты и этапа 7 (без боя)
 │   ├── probe_quests.py         # Безопасный зонд меню «Задание»
+│   ├── probe_quest_claim.py    # Зонд одной зелёной «Забрать награды»
+│   ├── probe_city_guide.py     # Зонд квестового молота / строителя
 │   ├── probe_fast_capture.py   # Замер FPS потока screenrecord + ffmpeg
 │   └── ...                     # Легаси-скрипты предыдущих экспериментов
 ├── config.yaml
@@ -181,6 +183,12 @@ python tools/probe_campaign_map.py --stage7 --json
 # Безопасно открыть меню «Задание» и прочитать список (без переходов)
 python tools/probe_quests.py --json
 
+# Нажать одну зелёную «Забрать награды» и посмотреть результат
+python tools/probe_quest_claim.py --json
+
+# Проверить городской указатель (квестовый молот / строитель)
+python tools/probe_city_guide.py --target quest_hammer --json
+
 # Замерить быстрый поток кадров (screenrecord + ffmpeg), без действий
 python tools/probe_fast_capture.py --frames 30
 ```
@@ -246,6 +254,7 @@ world model, разбор длительностей (`11:52` → 712 с), по�
 | `PopupCloser` | ✅ работает | Закрывает окна по `btn_close_x`; остальные крестики — TODO |
 | `CityHarvest` | ⚠️ частично | Работают еда/дерево; нужны шаблоны `bubble_stone`, `bubble_iron`, `bubble_wishing_well` |
 | `CityGifts` | ✅ работает | Подарок торговца + закрытие баннера награды |
+| `QuestRewards` | ✅ работает | Зелёные «Забрать награды»; живьём: +477 и уровень 3→4, без оплаты |
 | `BuildingUpgrade` | ⚠️ готова, отключена | Поток и OCR таймера проверены офлайн; нужна живая проверка на доступном здании |
 | `Alliance` | ⛔ отключена | Аккаунт пока не в альянсе; нужны шаблоны помощи/подарков |
 | `ChapterQuest` | ⛔ отключена | Глава 4 и этап 7 открываются зондами; нужен полный пайплайн и бой |

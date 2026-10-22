@@ -74,6 +74,12 @@ tasks:
     enabled: true
     interval_sec: 900
 
+  quest_rewards:
+    # Зелёные «Забрать награды» на экране ежедневных заданий.
+    # Проверено вживую 2026-10-22: +477, уровень 3→4, оплата не открылась.
+    enabled: true
+    interval_sec: 45
+
   chapter_quest:
     # TODO: включить после реализации полного пайплайна этапа кампании
     enabled: false
