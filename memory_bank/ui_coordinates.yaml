@@ -5,7 +5,41 @@ device:
   orientation: portrait
 
 screens:
+  royal_road:
+    # Подтверждено на живом кадре 2026-10-22, глава 4.
+    title: [541, 403]
+    title_region: [374, 382, 708, 424]
+    chapter_banner_y: 850
+    entry_crown: [75, 1960]          # нажимать только при OCR-баннере главы
+    entry_banner_text_region: [146, 1943, 572, 1971]
+    entry_text_center_not_clickable: [359, 1957]
+    current_quest: "Вызов Спасителя порядка, этап 7"
+    forward_button:
+      point: [870, 949]
+      region: [820, 928, 920, 970]
+      template: "btn_vpered_active"
+    chapter_reward_button:
+      point: [541, 1995]
+      region: [426, 1974, 656, 2016]
+      text: "Забрать награды"
+      state: "inactive_gray"          # не нажимать до завершения этапа 7
+    back: "hardware_back"             # одно нажатие → city_view
+
   campaign_map:
+    # Подтверждено 2026-10-22. Старые координаты этапов ниже оставлены
+    # как исторические; stage_7 обновлён по живому кадру.
+    confirmed_2026_10_22:
+      title_anchor: "title_campaign"
+      title_region: [324, 73, 756, 244]
+      back_button: [60, 130]
+      help_icon: [1015, 130]
+      difficulty_simple: [850, 205]
+      difficulty_hard: [1010, 205]
+      stage_7: [955, 1200]
+      stage_7_template: "campaign_stage_7"
+      current_difficulty: "Простой"
+      completed_stages_visible: [1, 2, 3, 4, 5]
+      active_stage: 7
     header:
       title_pos: [540, 55]
       back_button: [60, 55]
@@ -31,7 +65,7 @@ screens:
       stage_6:
         center: [760, 1180]
       stage_7:
-        center: [870, 880]
+        center: [955, 1200]        # подтверждено 2026-10-22, шаблон campaign_stage_7
       stage_8:
         center: [790, 680]
       stage_9:
@@ -43,7 +77,17 @@ screens:
     title_pos: [540, 950]
     skill_preview: [365, 1115]
     rewards_row: [500, 1340]
-    challenge_button: [558, 1825]
+    challenge_button: [540, 1875]     # подтверждено 2026-10-22, btn_stage_challenge=0.993
+    challenge_template: "btn_stage_challenge"
+    confirmed_stage_7:
+      title: "Этап 7"
+      objective: "Выжить в течение 120 сек."
+      new_skill: "Удар дракона"
+      first_reward:
+        speedup: "5 min x1"
+        food: "1.0K x2"
+        wood: "1.0K x2"
+      # Кнопку «Испытание» не нажимать до появления боевого пайплайна.
 
   stage_victory:
     banner_pos: [540, 900]
@@ -60,19 +104,24 @@ screens:
     indicator: [940, 2380]
 
   quests_menu:
+    verified: "2026-10-22"
+    anchor: "title_daily_quests"
     header:
       back_button: [80, 160]
       help_icon: [930, 160]
     tabs:
-      growth_quests: [355, 340]
-      daily_quests: [640, 340]
+      growth_quests: [386, 344]
+      daily_quests: [692, 344]
     categories:
-      weapon_quests: [540, 490]
-      construction_quests: [540, 1680]
-      other_quests: [540, 1745]
+      weapon_quests: [405, 494]
+      construction_quests: [405, 639]
+      other_quests: [390, 1819]
     claim_reward_button:
-      template: "btn_collect_reward"
-      sample_pos: [894, 614]
+      template: "btn_claim_green"
+      x: 884
+      y_positions: [744, 890, 1034, 1180, 1324, 1470]
+      threshold: 0.90
+      note: "6 наград роста; склад 1/2 без кнопки"
 
   city_view:
     hud_top:
@@ -109,6 +158,12 @@ screens:
       castle_level_badge: [160, 1220]
       wall: [639, 1500]          # проверено: открывает радиальное «Улучшить»
       locked_temple: [590, 350]
+    campaign_portal:
+      # Проверено 2026-10-22: основание портала открывает карту кампании.
+      template: "portal_campaign"
+      search_region: [324, 876, 702, 1412]
+      match_center_example: [522, 1132]
+      tap_point: [522, 1230]     # центр шаблона + 98 px вниз
     alliance_help_bubble:
       search_region: [750, 1800, 1050, 2200]
 

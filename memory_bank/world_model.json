@@ -7,8 +7,20 @@
     "vip_level": 1,
     "has_second_builder": false,
     "current_chapter": 4,
-    "current_chapter_title": null,
+    "current_chapter_title": "Вербовка Войск I",
     "beast_unlocked": "Panda"
+  },
+  "campaign": {
+    "mode": "Спаситель порядка",
+    "difficulty": "Простой",
+    "chapter": 4,
+    "chapter_title": "Вербовка Войск I",
+    "stage": 7,
+    "stage_status": "available",
+    "stage_objective": "Выжить в течение 120 сек.",
+    "stage_new_skill": "Удар дракона",
+    "stage_briefing_verified": true,
+    "combat_started": false
   },
   "builders": {
     "builder_1": {
@@ -87,6 +99,6 @@
       "misses": 0
     }
   },
-  "last_updated": 1792620599.613333,
+  "last_updated": 1792643852.8719442,
   "ui_state": "city_view"
 }

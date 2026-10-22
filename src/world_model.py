@@ -32,6 +32,18 @@ class WorldModel:
                 "vip_level": 0,
                 "has_second_builder": False,
             },
+            "campaign": {
+                "mode": "Спаситель порядка",
+                "difficulty": None,
+                "chapter": None,
+                "chapter_title": None,
+                "stage": None,
+                "stage_status": None,
+                "stage_objective": None,
+                "stage_new_skill": None,
+                "stage_briefing_verified": False,
+                "combat_started": False,
+            },
             "builders": {
                 "builder_1": {"busy": False, "target": None, "timer_end": None},
                 "builder_2": {"busy": False, "target": None, "timer_end": None},
@@ -208,6 +220,22 @@ class WorldModel:
         )
         self.save()
         return True
+
+    # =========================================================
+    # КАМПАНИЯ
+    # =========================================================
+
+    def update_campaign(self, **fields: Any) -> None:
+        """Обновление подтверждённых данных кампании.
+
+        Значения ``None`` не затирают уже известные поля: экран может не
+        содержать часть информации, и это не должно ломать модель.
+        """
+        campaign = self.state.setdefault("campaign", {})
+        for key, value in fields.items():
+            if value is not None:
+                campaign[key] = value
+        self.save()
 
     # =========================================================
     # ПЛАНИРОВАНИЕ ПО ТАЙМЕРАМ

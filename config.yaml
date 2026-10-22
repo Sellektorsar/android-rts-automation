@@ -3,7 +3,7 @@
 device:
   adb_path: "C:\\platform-tools\\adb.exe"
   ip: "192.168.31.156"
-  port: 37387
+  port: 41653
   timeout_sec: 10
   # Сколько секунд можно переиспользовать последний кадр (экономия ADB)
   frame_ttl_sec: 1.5

@@ -57,6 +57,28 @@ class WorldModelTimerTest(unittest.TestCase):
         self.model.clean_expired_timers()
         self.assertEqual(self.model.state["buildings"]["wall"]["level"], 6)
 
+    def test_campaign_defaults_and_update(self):
+        self.assertEqual(self.model.state["campaign"]["mode"], "Спаситель порядка")
+        self.model.update_campaign(
+            chapter=4,
+            chapter_title="Вербовка Войск I",
+            stage=7,
+            stage_objective="Выжить в течение 120 сек.",
+            stage_new_skill="Удар дракона",
+            difficulty="Простой",
+        )
+        campaign = self.model.state["campaign"]
+        self.assertEqual(campaign["chapter"], 4)
+        self.assertEqual(campaign["stage"], 7)
+        self.assertEqual(campaign["stage_new_skill"], "Удар дракона")
+        self.assertEqual(campaign["difficulty"], "Простой")
+
+    def test_campaign_update_keeps_known_values_on_none(self):
+        self.model.update_campaign(chapter=4, stage=7)
+        self.model.update_campaign(chapter=None, stage=None)
+        self.assertEqual(self.model.state["campaign"]["chapter"], 4)
+        self.assertEqual(self.model.state["campaign"]["stage"], 7)
+
 
 if __name__ == "__main__":
     unittest.main()
