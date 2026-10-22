@@ -105,6 +105,13 @@ screens:
     pause_template: "battle_pause"
     pause_template_fast: "battle_pause_fast"   # для кадров 540x1218
     pause_threshold: 0.90
+    heads_up:
+      # Плашка уведомления может лежать поверх pause_button; шаблон паузы
+      # при этом всё ещё находится, но тап уходит в системную плашку.
+      dismiss_before_challenge: true
+      dismiss_before_pause: true
+      dismiss_swipe: [[540, 220], [540, 10]]
+      note: "Если меню паузы не открылось — Back не нажимать."
     pause_menu:
       title: "Пауза"
       # Нижняя строка: Выйти | Начать сначала | Продолжить | Параметры.
@@ -120,6 +127,20 @@ screens:
         - "Параметры"
         - "Повторить"
         - "Купить"
+    skill_selection:
+      # Оверлей повышения уровня ВО ВРЕМЯ боя, не конец боя.
+      state: "skill_selection"
+      anchor: "title_skill_choice"
+      confirm_button: [545, 1750]
+      confirm_template: "btn_skill_confirm"
+      confirm_search_region: [270, 1583, 540, 487]
+      confirm_threshold: 0.90
+      first_card: [183, 1096]     # один тап, если кнопки «Подтвердить» нет
+      card_region: [24, 792, 315, 598]
+      rule: "Сначала «Подтвердить»; если нет — один раз первая карточка, затем «Подтвердить»."
+      forbidden:
+        - "Back"
+        - "повторный перебор карточек"
     ocr_hazard: "«Выжить в течение …» распознаётся как «BbIKMTb» (Выйти)"
     result_flow:
       exit_to: "campaign_map"
@@ -174,7 +195,11 @@ screens:
       # DANGER: открывает платное окно «Разблокировать золотой молот»
       quest_guide_hammer: [70, 565]
     bottom_nav:
-      world_map_toggle: [115, 2355]
+      # ВНИМАНИЕ: btn_world_map (110,2335) — мини-город/дракон, карту мира
+      # не открывает. Глобус справа от него открывает чат мира.
+      world_map_toggle: [115, 2355]       # историческая точка, не карта мира
+      world_chat_globe: [250, 2292]       # открывает unknown-чат; Back закрывает
+      world_chat_template: "btn_world_map_globe"
       quests: [295, 2375]
       bag: [455, 2375]
       mail: [615, 2375]
@@ -197,10 +222,16 @@ screens:
       locked_temple: [590, 350]
     campaign_portal:
       # Проверено 2026-10-22: основание портала открывает карту кампании.
+      # Позиция зависит от камеры города; портал может быть вне экрана.
       template: "portal_campaign"
-      search_region: [324, 876, 702, 1412]
-      match_center_example: [522, 1132]
-      tap_point: [522, 1230]     # центр шаблона + 98 px вниз
+      search_region: [324, 876, 702, 1412]       # историческая область
+      search_region_live: [270, 1096, 540, 974]  # широкая нижняя область
+      threshold_live: 0.60       # синее свечение/анимация снижают корреляцию
+      match_center_example: [526, 1692]
+      match_confidence_example: 0.616
+      tap_point_live: [526, 1790] # центр шаблона + 98 px вниз
+      historical_tap_point: [522, 1230]
+      note: "Если шаблон не найден даже при 0.60 — камера ушла; не панорамировать вслепую."
     alliance_help_bubble:
       search_region: [750, 1800, 1050, 2200]
 
@@ -209,6 +240,19 @@ screens:
       - [960, 220]    # Верхний правый угол типового модального окна
       - [920, 380]    # Уменьшенное окно акции
       - [80, 80]      # Верхний левый угол (кнопка назад/крестик)
+    event_new_kingdom:
+      close_button: [975, 642]
+      close_template: "btn_close_event_x"
+      # Золотой крестик; нажимать только его, не карточки покупки.
+      # Тап может потребовать повтора ~5 с.
+    daily_login:
+      claim_button: [540, 1657]
+      claim_text: "Забрать награды"
+      # Бесплатная награда; не перепутать с event purchase.
+    reward_receipt:
+      close_tap: [540, 1997]
+      template: "banner_reward_received"
+      # Проверено: тап по нижнему центру закрывает экран награды.
 
   # Проверено на живом устройстве 2026-10-21/22.
   building_upgrade:

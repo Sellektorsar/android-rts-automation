@@ -553,6 +553,23 @@ class AdbClient:
         time.sleep(3)
         return self.is_game_foreground(package_name)
 
+    def force_stop(self, package_name: str) -> bool:
+        """Принудительно останавливает приложение.
+
+        Используется только как аварийное восстановление, когда экран
+        боя/выбора навыка не реагирует на штатные кнопки. Данные игры не
+        изменяются; текущий бой может быть прерван.
+        """
+        logger.warning(f"Принудительная остановка {package_name}...")
+        try:
+            self._run_cmd(["shell", "am", "force-stop", package_name])
+            self.invalidate_frame()
+            time.sleep(1.0)
+            return not self.is_game_foreground(package_name)
+        except Exception as exc:  # noqa: BLE001
+            logger.error(f"Не удалось остановить {package_name}: {exc}")
+            return False
+
     def is_game_foreground(self, package_name: str) -> bool:
         try:
             result = self._run_cmd(["shell", "dumpsys", "window", "windows"], timeout=max(6, self.timeout))

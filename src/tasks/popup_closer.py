@@ -17,6 +17,10 @@ class PopupCloserTask(BaseTask):
             "btn_close_x",
             "btn_close_round",
             "btn_close_gold",
+            # Золотой X события «Новое Королевство» (975, 642).
+            # Шаблон проверен на живом кадре; нажимается только крестик,
+            # не карточки покупки.
+            "btn_close_event_x",
         ]
 
     def execute(self, screen: np.ndarray) -> bool:

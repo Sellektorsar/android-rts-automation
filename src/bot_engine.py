@@ -401,7 +401,12 @@ class BotEngine:
         # 1. Крестик закрытия, если для него уже есть шаблон.
         close = self.vision.find_best(
             frame,
-            ["btn_close_x", "btn_close_round", "btn_close_gold"],
+            [
+                "btn_close_x",
+                "btn_close_round",
+                "btn_close_gold",
+                "btn_close_event_x",
+            ],
             threshold=0.72,
         )
         if close:

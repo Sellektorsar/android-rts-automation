@@ -1,5 +1,51 @@
 # Журнал разработки
 
+## 2026-10-22 — Выбор навыка, heads-up, безопасное восстановление, камера
+
+### Сделано
+
+- `tools/probe_stage7_combat.py`:
+  - `dismiss_heads_up()` перед «Испытанием» и перед паузой; `_pause_and_try_exit`
+    больше не нажимает `Back`, если меню паузы не открылось
+    (`pause_menu_not_open`).
+  - `_handle_skill_selection`: сначала `btn_skill_confirm` `(545, 1750)`; если
+    нет кнопки — один раз первая карточка `(183, 1096)`, затем confirm.
+    `Back` не нажимается.
+  - Перед паузой проверяется `skill_selection`; если оверлей появился, он
+    подтверждается, затем ищется пауза.
+  - Если пауза не удалась, текущий экран классифицируется; при
+    `skill_selection`/`tutorial_battle`/`unknown` зонд не ждёт 140 с, а
+    идёт на безопасный перезапуск.
+  - `_relaunch_game` использует `force_stop()` + `launch_game()`; на
+    `unknown` при игре в foreground перезапуск не делается.
+  - Serial для `FastCapture` берётся из `client.port`, а не из `config.yaml`;
+    поток стартует до `_open_stage7`.
+  - Поиск портала: область `[0.25W,0.45H,0.50W,0.40H]`, порог `0.60`;
+    живой центр `(526,1692)`, тап `(526,1790)`.
+- `src/tasks/popup_closer.py`, `src/bot_engine.py`: добавлен
+  `btn_close_event_x` `(975, 642)`.
+- Новые шаблоны: `assets/templates/btn_skill_confirm.png`,
+  `assets/templates/btn_close_event_x.png`,
+  `assets/templates/btn_world_map_globe.png` (глобус чата, не карта).
+- Память: `current_state.md`, `screens_manifest.md`, `ui_coordinates.yaml`,
+  `decisions.md`, `development_log.md` обновлены.
+
+### Проверки
+
+- `unittest` — **52 теста, OK**; `compileall` OK.
+- Живой зонд 7: `portal_campaign` `0.619`, `campaign_map`, тёмный флаг этапа 7
+  `0.984`, брифинг, «Испытание», бой `battle_pause=0.974`, пауза, выход
+  `(207,1552)`, `exit_confirmed=true`, возврат в город.
+- `--observe-sec 2`: прочитано **273 кадра за 2.0 с = 9.67 FPS**; появился
+  `skill_selection` без кнопки; пауза не открылась, `Back` не нажимался;
+  восстановление до `city_view` через force-stop.
+- Офлайн-тест обработчика: кадр без кнопки → `(183,1096)`, кадр с
+  кнопкой → `(545,1750)`, `Back` — 0.
+- Глобус `(250,2292)` открывает чат мира; `Back` возвращает в город.
+- `btn_world_map` `(110,2335)` карту мира не открывает.
+- Текущий блокер: камера города ушла, `portal_campaign` не найден даже при
+  `0.4`; портал вне экрана.
+
 ## 2026-10-22 — Бой этапа 7: распознавание, вход и безопасный выход
 
 - `src/perception.py`: добавлен боевой профиль `tutorial_battle` с якорем

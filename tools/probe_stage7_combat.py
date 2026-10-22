@@ -144,6 +144,15 @@ def _return_to_city(
         states.append(result.state)
         if result.state == GameState.CITY_VIEW:
             return True, states
+        if result.state == GameState.LOADING:
+            time.sleep(2.0)
+            continue
+        if result.state not in BACK_SAFE_STATES:
+            logger.warning(
+                f"Возврат остановлен на небезопасном экране "
+                f"{result.state}; Back не нажимаем."
+            )
+            break
         client.press_back()
         time.sleep(1.5)
     return False, states
@@ -167,12 +176,16 @@ def _open_stage7(
         return False
 
     height, width = frame.shape[:2]
+    # Портал кампании — синий анимированный объект в нижней части города.
+    # Камера города может быть смещена/приближена, а свечение меняется,
+    # поэтому ищем в широкой нижней области и допускаем более низкую
+    # корреляцию. В этой области нет других похожих синих порталов.
     portal = _match_center(
         vision,
         frame,
         PORTAL_TEMPLATE,
-        threshold=0.80,
-        region=(int(width * 0.30), int(height * 0.36), int(width * 0.35), int(height * 0.22)),
+        threshold=0.60,
+        region=(int(width * 0.25), int(height * 0.45), int(width * 0.50), int(height * 0.40)),
     )
     if portal is None:
         result["error"] = "portal_not_found"
@@ -358,6 +371,86 @@ def _wait_for_battle(
     return None
 
 
+def _observe_battle(
+    client: AdbClient,
+    fast: Optional[FastCapture],
+    save_dir: Path,
+    result: Dict[str, Any],
+    seconds: float,
+) -> None:
+    """Смотрит бой без управления: сохраняет несколько кадров и выходит.
+
+    Это диагностический режим для калибровки HUD. Никаких нажатий по
+    джойстику/навыкам здесь нет; выход выполняет вызывающий код.
+    """
+    started = time.time()
+    saved: list[tuple[str, float]] = []
+    last_frame = None
+    while time.time() - started < seconds:
+        frame = fast.read(timeout_sec=0.8) if fast is not None else None
+        if frame is None:
+            time.sleep(0.2)
+            continue
+        last_frame = frame
+        elapsed = time.time() - started
+        if len(saved) < 6 and (not saved or elapsed - saved[-1][1] >= 0.8):
+            path = save_dir / f"battle_observe_{len(saved) + 1}.png"
+            cv2.imwrite(str(path), frame)
+            saved.append((str(path), elapsed))
+    if last_frame is not None:
+        cv2.imwrite(str(save_dir / "battle_observe_last.png"), last_frame)
+    full = client.get_screenshot(fresh=True)
+    if full is not None:
+        cv2.imwrite(str(save_dir / "battle_observe_full.png"), full)
+    result["observe"] = {
+        "requested_sec": seconds,
+        "saved": [
+            {"path": path, "at_sec": round(at_sec, 2)} for path, at_sec in saved
+        ],
+        "fast_frames": fast.stats.frames if fast is not None else 0,
+    }
+    logger.info(
+        f"[Combat] Наблюдение {seconds:.1f}с без управления; "
+        f"сохранено {len(saved)} быстрых кадров."
+    )
+
+
+def _move_test(client: AdbClient, save_dir: Path, result: Dict[str, Any]) -> None:
+    """Один короткий свайп джойстика вверх, без навыков и атаки.
+
+    Нужен только для калибровки: сравнить кадры «до/после» и понять,
+    двигается ли герой. Координаты — центр нижней круглой площадки.
+    """
+    before = client.get_screenshot(fresh=True)
+    if before is None:
+        result["move_test"] = {"error": "no_before_frame"}
+        return
+    before_path = save_dir / "battle_move_before.png"
+    cv2.imwrite(str(before_path), before)
+
+    start = (540, 2010)
+    end = (540, 1800)
+    client.swipe(start[0], start[1], end[0], end[1], duration_ms=700)
+    time.sleep(0.5)
+
+    after = client.get_screenshot(fresh=True)
+    if after is None:
+        result["move_test"] = {"error": "no_after_frame"}
+        return
+    after_path = save_dir / "battle_move_after.png"
+    cv2.imwrite(str(after_path), after)
+    result["move_test"] = {
+        "start": list(start),
+        "end": list(end),
+        "duration_ms": 700,
+        "before_saved_to": str(before_path),
+        "after_saved_to": str(after_path),
+    }
+    logger.info(
+        f"[Combat] Move-test: свайп {start} -> {end}; кадры до/после сохранены."
+    )
+
+
 def _pause_and_try_exit(
     client: AdbClient,
     vision: Vision,
@@ -368,10 +461,28 @@ def _pause_and_try_exit(
     attempt: int,
 ) -> Dict[str, Any]:
     info: Dict[str, Any] = {"attempt": attempt}
+    # Heads-up уведомление может лежать поверх кнопки паузы: шаблон
+    # «battle_pause» при этом всё ещё находится, но тап уходит в системную
+    # плашку. Всегда убираем плашку перед паузой.
+    client.dismiss_heads_up()
+    time.sleep(0.5)
     full = client.get_screenshot(fresh=True)
     if full is None:
         info["error"] = "no_frame"
         return info
+    # Оверлей повышения уровня может появиться прямо перед паузой.
+    # Это не конец боя: подтверждаем навык и продолжаем искать паузу.
+    current = classifier.classify(full)
+    if current.state == GameState.SKILL_SELECTION:
+        info["skill_selection_before_pause"] = True
+        if not _handle_skill_selection(client, vision, classifier, result):
+            info["error"] = "skill_selection_unhandled"
+            info["action"] = "skill_selection_unhandled"
+            return info
+        full = client.get_screenshot(fresh=True)
+        if full is None:
+            info["error"] = "no_frame_after_skill"
+            return info
     height, width = full.shape[:2]
     pause = _match_center(
         vision,
@@ -414,10 +525,13 @@ def _pause_and_try_exit(
         scale=0.5,
     )
     if exit_match is None:
+        # Пауза не открылась (например, тап съела heads-up плашка).
+        # Back здесь опасен: бой/оверлей навыка не закрываются им, а
+        # система может выйти из игры в лаунчер. Поэтому только
+        # сообщаем наверх, что меню паузы не открылось.
         info["exit_button"] = None
-        info["action"] = "resume"
-        client.press_back()
-        time.sleep(1.0)
+        info["action"] = "pause_menu_not_open"
+        info["error"] = "exit_button_not_found"
         return info
 
     point = {
@@ -464,6 +578,141 @@ def _pause_and_try_exit(
     return info
 
 
+BACK_SAFE_STATES = frozenset(
+    {
+        GameState.CAMPAIGN_MAP,
+        GameState.STAGE_BRIEFING,
+        GameState.ROYAL_ROAD,
+        GameState.QUESTS_MENU,
+        GameState.ALLIANCE_MENU,
+        GameState.BUILDING_MENU,
+        GameState.BUILDING_UPGRADE,
+        GameState.POPUP_OFFER,
+        GameState.POPUP_GENERIC,
+    }
+)
+
+
+def _handle_skill_selection(
+    client: AdbClient,
+    vision: Vision,
+    classifier: ScreenClassifier,
+    result: Dict[str, Any],
+    *,
+    timeout_sec: float = 7.0,
+) -> bool:
+    """Подтверждает выбор навыка, появившийся поверх боя.
+
+    Это не конец боя, а оверлей повышения уровня. Сначала ищем зелёную
+    кнопку «Подтвердить». Если её нет, экран открылся без выбранной
+    карточки: выбираем первую карточку (это бесплатный навык), после
+    чего кнопка «Подтвердить» появляется. Back не нажимаем: он не
+    закрывает оверлей и может вывести игру в лаунчер.
+    """
+    started = time.time()
+    card_tapped = False
+    while time.time() - started < timeout_sec:
+        frame = client.get_screenshot(fresh=True)
+        if frame is None:
+            time.sleep(0.4)
+            continue
+        state = classifier.classify(frame)
+        if state.state != GameState.SKILL_SELECTION:
+            result.setdefault("skill_selection_events", []).append(
+                {"action": "resolved", "state": state.state}
+            )
+            return True
+        height, width = frame.shape[:2]
+        match = vision.find_template(
+            frame,
+            "btn_skill_confirm",
+            threshold=0.90,
+            region=(
+                int(width * 0.25),
+                int(height * 0.65),
+                int(width * 0.55),
+                int(height * 0.20),
+            ),
+            scale=0.5,
+        )
+        if match is not None:
+            point = {
+                "x": int(match[0]),
+                "y": int(match[1]),
+                "confidence": round(float(match[2]), 3),
+            }
+            result.setdefault("skill_selection_events", []).append(
+                {"action": "confirm", "button": point}
+            )
+            logger.info(
+                f"[Combat] Подтверждаем навык в оверлее "
+                f"({point['x']}, {point['y']})."
+            )
+            client.tap(point["x"], point["y"])
+            time.sleep(1.5)
+            return True
+        if not card_tapped:
+            # Экран без выбранной карточки: кнопка подтверждения ещё не
+            # появилась. Выбираем первую карточку (центр ~0.17W, 0.45H).
+            # Это бесплатный выбор навыка; карточки покупки здесь нет.
+            card = {
+                "x": int(width * 0.17),
+                "y": int(height * 0.45),
+            }
+            result.setdefault("skill_selection_events", []).append(
+                {"action": "select_first_card", "point": card}
+            )
+            logger.info(
+                f"[Combat] Выбираем первую карточку навыка "
+                f"({card['x']}, {card['y']})."
+            )
+            client.tap(card["x"], card["y"])
+            card_tapped = True
+            time.sleep(0.8)
+            continue
+        time.sleep(0.4)
+    result.setdefault("skill_selection_events", []).append(
+        {"action": "unhandled_no_confirm_button"}
+    )
+    logger.warning(
+        "Оверлей выбора навыка не удалось подтвердить; "
+        "не жмём Back и не перебираем карточки."
+    )
+    return False
+
+
+def _relaunch_game(
+    client: AdbClient,
+    config: Dict[str, Any],
+    classifier: ScreenClassifier,
+    *,
+    timeout_sec: float = 60.0,
+) -> Dict[str, Any]:
+    """Аварийное восстановление: force-stop + запуск игры до города."""
+    package = config["game"]["package"]
+    activity = config["game"]["activity"]
+    stopped = client.force_stop(package)
+    time.sleep(1.0)
+    launched = client.launch_game(package, activity)
+    started = time.time()
+    states: List[str] = []
+    while time.time() - started < timeout_sec:
+        time.sleep(2.0)
+        frame = client.get_screenshot(fresh=True)
+        if frame is None:
+            continue
+        state = classifier.classify(frame).state
+        states.append(state)
+        if state == GameState.CITY_VIEW:
+            break
+    return {
+        "stopped": stopped,
+        "launched": launched,
+        "states": states,
+        "ok": bool(states and states[-1] == GameState.CITY_VIEW),
+    }
+
+
 def _wait_for_battle_end(
     client: AdbClient,
     fast: Optional[FastCapture],
@@ -504,6 +753,28 @@ def _wait_for_battle_end(
             time.sleep(0.5)
             continue
         classification = classifier.classify(frame)
+        if classification.state == GameState.SKILL_SELECTION:
+            # Это оверлей повышения уровня поверх боя, а не его конец.
+            result["skill_selection_count"] = (
+                result.get("skill_selection_count", 0) + 1
+            )
+            if (
+                result["skill_selection_count"] <= 4
+                and _handle_skill_selection(
+                    client, vision, classifier, result
+                )
+            ):
+                last_log = 0.0
+                continue
+            cv2.imwrite(str(save_dir / "stage7_battle_end.png"), frame)
+            result["battle_end"] = {
+                "state": classification.state,
+                "confidence": round(classification.confidence, 3),
+                "evidence": classification.evidence,
+                "elapsed_sec": round(time.time() - started, 2),
+                "unhandled": True,
+            }
+            return "skill_selection_unhandled"
         if classification.state != GameState.TUTORIAL_BATTLE:
             cv2.imwrite(str(save_dir / "stage7_battle_end.png"), frame)
             result["battle_end"] = {
@@ -538,6 +809,18 @@ def _dismiss_result(
         classification = classifier.classify(frame)
         if classification.state == GameState.CITY_VIEW:
             break
+        if classification.state in (
+            GameState.TUTORIAL_BATTLE,
+            GameState.SKILL_SELECTION,
+        ):
+            actions.append(
+                {
+                    "step": index,
+                    "action": "stop_in_battle",
+                    "state": classification.state,
+                }
+            )
+            break
         ocr = read_text(frame, scale=0.5, min_confidence=0.30)
         if looks_like_payment(frame):
             actions.append({"step": index, "action": "payment_guard"})
@@ -555,9 +838,19 @@ def _dismiss_result(
             client.tap(item.x, item.y)
             time.sleep(1.6)
             continue
-        actions.append({"step": index, "action": "back"})
-        client.press_back()
-        time.sleep(1.4)
+        if classification.state in BACK_SAFE_STATES:
+            actions.append({"step": index, "action": "back"})
+            client.press_back()
+            time.sleep(1.4)
+            continue
+        actions.append(
+            {
+                "step": index,
+                "action": "stop_unsafe_back",
+                "state": classification.state,
+            }
+        )
+        break
     result["dismiss_actions"] = actions
 
 
@@ -580,7 +873,22 @@ def main() -> int:
     )
     parser.add_argument("--detect-timeout", type=float, default=15.0)
     parser.add_argument("--max-wait", type=float, default=140.0)
+    parser.add_argument(
+        "--observe-sec",
+        type=float,
+        default=0.0,
+        help="Смотреть бой N секунд без управления (диагностика HUD)",
+    )
+    parser.add_argument(
+        "--move-test",
+        action="store_true",
+        help="Один короткий свайп джойстика вверх для калибровки, затем выход",
+    )
     args = parser.parse_args()
+
+    if args.move_test and args.dry_run:
+        print("Отказ: --move-test несовместим с --dry-run.")
+        return 2
 
     if not args.confirm and not args.dry_run:
         print("Отказ: для входа в бой нужен флаг --confirm.")
@@ -601,6 +909,21 @@ def main() -> int:
 
     result: Dict[str, Any] = {"confirm": bool(args.confirm) and not args.dry_run}
     fast: Optional[FastCapture] = None
+    if not args.dry_run:
+        # Запускаем поток заранее, пока открываем карту/брифинг: к моменту
+        # боя screenrecord+ffmpeg уже прогреты и отдают кадры без задержки
+        # на старт. Порт берём из client: config может быть устаревшим.
+        device = config["device"]
+        serial = f"{args.ip or client.ip}:{args.port or client.port}"
+        fast = FastCapture(
+            adb_path=device["adb_path"],
+            serial=serial,
+            width=540,
+            height=1218,
+            record_time_limit=int(max(90, args.max_wait + 45)),
+        )
+        result["fast_capture_started"] = fast.start()
+        time.sleep(0.4)
     try:
         if not _open_stage7(client, vision, classifier, save_dir, result):
             logger.error(f"Не удалось открыть этап 7: {result.get('error')}")
@@ -619,19 +942,11 @@ def main() -> int:
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
 
-        device = config["device"]
-        serial = f"{args.ip or device['ip']}:{args.port or device['port']}"
-        fast = FastCapture(
-            adb_path=device["adb_path"],
-            serial=serial,
-            width=540,
-            height=1218,
-            record_time_limit=int(max(60, args.max_wait + 30)),
-        )
-        result["fast_capture_started"] = fast.start()
-        time.sleep(0.4)
-
         challenge = result.get("challenge") or {}
+        # Убираем возможную heads-up плашку до входа в бой: она может
+        # перекрыть кнопку паузы и украсть первый тап.
+        client.dismiss_heads_up()
+        time.sleep(0.5)
         logger.info(
             f"[Combat] Нажимаем «Испытание» ({challenge.get('x')}, {challenge.get('y')})."
         )
@@ -677,30 +992,65 @@ def main() -> int:
                 result["battle_ocr"] = _ocr_payload(full_ocr)
                 logger.info(f"[Combat] Боевой OCR: {full_ocr.text[:400]}")
 
-            result["pause_1"] = _pause_and_try_exit(
+            if args.observe_sec > 0:
+                _observe_battle(client, fast, save_dir, result, args.observe_sec)
+            if args.move_test:
+                _move_test(client, save_dir, result)
+
+            pause_1 = _pause_and_try_exit(
                 client, vision, classifier, save_dir, result, attempt=1
             )
-
-            end_state = _wait_for_battle_end(
-                client,
-                fast,
-                vision,
-                classifier,
-                max_wait_sec=args.max_wait,
-                save_dir=save_dir,
-                result=result,
-            )
-            if end_state == GameState.TUTORIAL_BATTLE:
-                result["pause_2"] = _pause_and_try_exit(
+            result["pause_1"] = pause_1
+            paused = bool(pause_1.get("exit_confirmed"))
+            if not paused:
+                # Одна быстрая повторная попытка: меню паузы иногда не
+                # успевает открыться после первого тапа.
+                time.sleep(1.0)
+                pause_retry = _pause_and_try_exit(
                     client, vision, classifier, save_dir, result, attempt=2
                 )
-            if end_state not in (GameState.TUTORIAL_BATTLE, "timeout"):
+                result["pause_1_retry"] = pause_retry
+                if pause_retry.get("exit_confirmed"):
+                    pause_1 = pause_retry
+                    paused = True
+
+            if paused:
+                end_state = (
+                    pause_1.get("after_exit_state") or GameState.CAMPAIGN_MAP
+                )
+            else:
+                # Если бой уже закончился сам (победа/поражение/карта),
+                # обрабатываем этот экран. Если всё ещё бой или оверлей
+                # навыка — не ждём 140 секунд и не жмём Back, а идём на
+                # безопасный перезапуск.
+                frame = client.get_screenshot(fresh=True)
+                current_state = (
+                    classifier.classify(frame).state
+                    if frame is not None
+                    else GameState.UNKNOWN
+                )
+                if current_state not in (
+                    GameState.TUTORIAL_BATTLE,
+                    GameState.SKILL_SELECTION,
+                    GameState.UNKNOWN,
+                ):
+                    end_state = current_state
+                else:
+                    end_state = "pause_failed"
+                    result["combat_unresolved"] = True
+            if end_state not in (
+                GameState.TUTORIAL_BATTLE,
+                GameState.SKILL_SELECTION,
+                "skill_selection_unhandled",
+                "timeout",
+            ):
                 _dismiss_result(client, classifier, save_dir, result)
             else:
                 result["combat_unresolved"] = True
                 logger.warning(
-                    "Бой всё ещё не завершён; не нажимаем случайные кнопки. "
-                    "Нужен ручной контроль или повторный запуск зонда."
+                    "Бой/выбор навыка всё ещё не завершён; не нажимаем "
+                    "случайные кнопки и не жмём Back. Нужен ручной контроль "
+                    "или перезапуск зонда."
                 )
     finally:
         if fast is not None:
@@ -711,6 +1061,22 @@ def main() -> int:
             }
 
     ok, states = _return_to_city(client, classifier)
+    if not ok:
+        last_state = states[-1] if states else GameState.UNKNOWN
+        package = config["game"]["package"]
+        if last_state in (
+            GameState.TUTORIAL_BATTLE,
+            GameState.SKILL_SELECTION,
+        ) or not client.is_game_foreground(package):
+            # Неизвестный экран при игре в foreground — это, скорее всего,
+            # ежедневная награда/событие. force-stop там не нужен и может
+            # снова привести к череде попапов; зонд просто остановится.
+            logger.warning(
+                "Штатный возврат не удался; выполняем force-stop + запуск игры."
+            )
+            result["recovery"] = _relaunch_game(client, config, classifier)
+            ok = bool(result["recovery"].get("ok"))
+            states = states + list(result["recovery"].get("states", []))
     result["returned_to_city"] = ok
     result["return_states"] = states
     print(json.dumps(result, ensure_ascii=False, indent=2))
