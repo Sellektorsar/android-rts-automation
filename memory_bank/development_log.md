@@ -34,6 +34,25 @@
 - BattleGuard/autopilot (P2); FastCapture restart после `--time-limit`;
   живой тест оверлея навыка.
 
+## 2026-10-22 (ночь) — чёрный кадр после коммита `051124e`; recovery force-stop + relaunch
+
+### Бытовые события
+
+- После коммита `051124e` (template spots + tap_dy + radial generosity +
+  perception fix + memory bank) захват кадров через `adb pull` стал
+  стабильно чёрным (mean=0, std=0, OCR пустой); healthcheck: `black_frame,
+  unknown_screen`. Процесс игры жил (CPU ~1G).
+- Recovery через штатный `force_stop` + `launch_game` → `city_view`, frame
+  mean 116.1, std 60.1 — кадры в норме. Root cause не установлен (вероятно,
+  зависшая отрисовка/переключение активити).
+
+### Статус
+
+- Коммит `051124e` в `main`; 58 тестов OK, `py_compile` OK, memory bank
+  обновлён.
+- Wall E2E (`building_wall_tower` → tap → radial conf 0.984 → panel LV.5→LV.6 →
+  inactive confirm) закрыт и зафиксирован (ADR-020).
+
 ## 2026-10-22 (позже) — мультимасштабный портал и живые бои на новой камере
 
 ### Код
