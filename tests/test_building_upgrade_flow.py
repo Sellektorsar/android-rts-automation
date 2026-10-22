@@ -107,18 +107,30 @@ class BuildingUpgradeFlowTest(unittest.TestCase):
         self.assertEqual(client.taps, [(590, 1358)])
 
     def test_spot_formats(self):
-        self.assertEqual(BuildingUpgradeTask._parse_spots(None)[0][1], (639, 1500))
+        self.assertEqual(BuildingUpgradeTask._parse_spots(None)[0], ("wall", (639, 1500), None, 0))
         self.assertEqual(
             BuildingUpgradeTask._parse_spots([[100, 200]])[0],
-            (None, (100, 200)),
+            (None, (100, 200), None, 0),
         )
         self.assertEqual(
             BuildingUpgradeTask._parse_spots([{"name": "wall", "point": [1, 2]}])[0],
-            ("wall", (1, 2)),
+            ("wall", (1, 2), None, 0),
         )
         self.assertEqual(
             BuildingUpgradeTask._parse_spots([("farm", [3, 4])])[0],
-            ("farm", (3, 4)),
+            ("farm", (3, 4), None, 0),
+        )
+        self.assertEqual(
+            BuildingUpgradeTask._parse_spots(
+                [{"name": "wall", "template": "building_wall_tower"}]
+            )[0],
+            ("wall", None, "building_wall_tower", 0),
+        )
+        self.assertEqual(
+            BuildingUpgradeTask._parse_spots(
+                [{"name": "wall", "template": "building_wall_tower", "tap_dy": 30}]
+            )[0],
+            ("wall", None, "building_wall_tower", 30),
         )
 
     @unittest.skipUnless(
@@ -135,6 +147,66 @@ class BuildingUpgradeFlowTest(unittest.TestCase):
         self.assertEqual(context.get("current_level"), 4)
         self.assertEqual(context.get("target_level"), 5)
         self.assertEqual(context.get("duration"), 712)
+
+
+    def test_template_spot_taps_matched_building(self):
+        """Шаблонная точка: здание ищется на кадре, тап — со смещением tap_dy.
+
+        Живой урок 2026-10-22: в изометрии кликабельна подошва здания,
+        поэтому тап делается ниже центра найденного шаблона.
+        """
+        rng = np.random.default_rng(3)
+        building = rng.integers(0, 256, (40, 30, 3), dtype=np.uint8).astype(np.uint8)
+        self.vision.add_template("test_building", building)
+
+        city = np.full((2436, 1080, 3), 100, dtype=np.uint8)
+        menu = np.full((2436, 1080, 3), 100, dtype=np.uint8)
+        panel = np.full((2436, 1080, 3), 100, dtype=np.uint8)
+        after = np.full((2436, 1080, 3), 100, dtype=np.uint8)
+
+        paste(city, building, 400, 1400)
+        radial = self.vision.templates_cache[BuildingUpgradeTask.RADIAL_TEMPLATE]
+        # кольцо меню над подошвой: центр тапа (400, 1500); кнопка целиком
+        # внутри области поиска района меню
+        paste(menu, radial, 300, 1280)
+        required = self.vision.templates_cache[BuildingUpgradeTask.REQUIRED_TEMPLATE]
+        confirm = self.vision.templates_cache[BuildingUpgradeTask.CONFIRM_TEMPLATE]
+        paste(panel, required, 540, 1455)
+        paste(panel, confirm, 820, 2315)
+
+        client = FakeClient([city, menu, panel, after])
+        task = BuildingUpgradeTask(
+            client,
+            self.vision,
+            interval_sec=1,
+            reflection=self.reflection,
+            world=self.world,
+            spots=[{"name": "wall", "template": "test_building", "tap_dy": 100}],
+        )
+        with mock.patch.object(
+            task,
+            "_read_upgrade_context",
+            return_value={"name": "wall", "current_level": 4, "target_level": 5, "duration": 712},
+        ):
+            self.assertTrue(task.can_run())
+            self.assertTrue(task.execute(city))
+
+        self.assertEqual(client.taps, [(400, 1500), (300, 1280), (820, 2315)])
+        self.assertEqual(self.reflection.task_stats("BuildingUpgrade")["successes"], 1)
+
+    def test_template_spot_missing_is_skipped_without_taps(self):
+        """Шаблон здания не найден (вне экрана после смены камеры) — кликов нет."""
+        city = np.full((2436, 1080, 3), 100, dtype=np.uint8)
+        client = FakeClient([city])
+        task = BuildingUpgradeTask(
+            client,
+            self.vision,
+            interval_sec=1,
+            reflection=self.reflection,
+            spots=[{"name": "wall", "template": "absent_building"}],
+        )
+        self.assertFalse(task.execute(city))
+        self.assertEqual(client.taps, [])
 
 
 if __name__ == "__main__":

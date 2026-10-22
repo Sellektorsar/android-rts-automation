@@ -37,6 +37,28 @@ class QuestsPerceptionTest(unittest.TestCase):
         self.assertEqual(result.source, "anchor")
         self.assertIn("title_daily_quests", result.evidence)
 
+    def test_reward_receipt_beats_quests_menu(self):
+        """Квитанция «Вы получили награду!» поверх меню — это popup_reward.
+
+        Живой кадр 2026-10-22: меню заданий притемнено квитанцией; якорь
+        title_daily_quests всё ещё матчится сквозь затемнение, из-за чего
+        экран ошибочно считался quests_menu и цикл заявок замирал.
+        """
+        path = Path("logs/inspect/quests_probe.png")
+        if not path.exists():
+            self.skipTest("нет локального кадра quests_probe.png")
+        frame = cv2.imread(str(path)).copy()
+        banner = self.vision.templates_cache["banner_reward_received"]
+        bh, bw = banner.shape[:2]
+        x0, y0 = 541 - bw // 2, 812 - bh // 2
+        frame[y0 : y0 + bh, x0 : x0 + bw] = banner
+
+        result = self.classifier.classify(frame)
+
+        self.assertEqual(result.state, GameState.POPUP_REWARD)
+        self.assertTrue(result.is_popup)
+        self.assertIn("banner_reward_received", result.evidence)
+
 
 if __name__ == "__main__":
     unittest.main()

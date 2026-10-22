@@ -1,5 +1,39 @@
 # Журнал разработки
 
+## 2026-10-22 (вечер) — E2E улучшения здания закрыт; кольцо радиальное; reset-камера
+
+### Код
+
+- `src/tasks/building_upgrade.py`:
+  - `Spot` — 4-кучка `(name, point, template, tap_dy)`;
+    `DEFAULT_SPOTS = (("wall", (639, 1500), None, 0),)`.
+  - `_parse_spots` — словарные споты с `tap_dy` (default 0); компактные пары и
+    абсолютные точки — `tap_dy=0`.
+  - `_resolve_spot` — тап = центр шаблона + `round(tap_dy * scale)`.
+  - `SPOT_TEMPLATE_THRESHOLD = 0.70` (было 0.75; живой conf 0.749 на
+    мультимасштабе), `SPOT_TEMPLATE_SCALES = (0.80..1.20)`.
+  - `_radial_region(center)` — щедрое поле `cx±0.20W`, `cy-0.28H..cy+0.05H`.
+- `tools/probe_building_template.py`: `--tap-dy` (default 30); тап с
+  `tap_dy × scale`; `_wait_city` — пауза 2.2 с после Back.
+- `src/perception.py`: `POPUP_REWARD` priority 14, одна группа
+  `banner_reward_received`.
+
+### Живые проверки
+
+- Wall E2E закрыт: тап здание → кольцо (conf 0.984) → панель (wall LV.5→LV.6,
+  timer 4277 c) → синяя кнопка неактивна (HSV sat 22.4, gray) → возврат в город.
+- Камера после relaunch — сброс на новый вид; пересоздан шаблон
+  `building_wall_tower` (58×122, из `city_relaunch_stable.png`, self-conf 1.0,
+  конкуренты ≤0.53); порог спота снижен до 0.70.
+- 58 тестов OK, `py_compile` OK.
+
+### Следующие шаги
+
+- Включить task только для реально апгрейдного здания (ферма/сарайм; нужны
+  шаблоны).
+- BattleGuard/autopilot (P2); FastCapture restart после `--time-limit`;
+  живой тест оверлея навыка.
+
 ## 2026-10-22 (позже) — мультимасштабный портал и живые бои на новой камере
 
 ### Код

@@ -140,6 +140,17 @@ DEFAULT_PROFILES: Tuple[ScreenProfile, ...] = (
         keywords=("задание выполнено", "победа", "поздравляем с победой"),
     ),
     ScreenProfile(
+        state=GameState.POPUP_REWARD,
+        priority=14,
+        # Квитанция «Вы получили награду!» рисуется ПОВЕРХ любого экрана
+        # (задания, город, карта). Приоритет должен быть ниже якорей меню:
+        # профили сортируются по priority, и _match_groups требует совпадения
+        # КАЖДОЙ группы (группы = AND, якоря внутри группы = OR), поэтому
+        # здесь ровно одна группа с баннером (живой кадр 2026-10-22).
+        groups=((Anchor("banner_reward_received", 0.80, (0.0, 0.05, 1.0, 0.95)),),),
+        keywords=("награда за задание", "получена награда", "награды главы"),
+    ),
+    ScreenProfile(
         state=GameState.QUESTS_MENU,
         priority=16,
         # Экран ежедневных заданий: сверху красный заголовок «Задание»,
@@ -162,18 +173,6 @@ DEFAULT_PROFILES: Tuple[ScreenProfile, ...] = (
         # Системный диалог "Выйти из игры?" — закрываем только через Back/Нет.
         groups=((Anchor("title_exit_confirm", 0.72, (0.30, 0.42, 0.70, 0.50)),),),
         keywords=("выйти из игры", "выход из игры"),
-    ),
-    ScreenProfile(
-        state=GameState.POPUP_REWARD,
-        priority=20,
-        groups=(
-            (
-                Anchor("banner_reward_received", 0.80, (0.0, 0.05, 1.0, 0.95)),
-                Anchor("btn_claim_green", 0.84, (0.0, 0.10, 1.0, 0.98)),
-                Anchor("btn_collect_reward", 0.84, (0.0, 0.10, 1.0, 0.98)),
-            ),
-        ),
-        keywords=("награда за задание", "получена награда", "награды главы"),
     ),
     ScreenProfile(
         state=GameState.STAGE_BRIEFING,

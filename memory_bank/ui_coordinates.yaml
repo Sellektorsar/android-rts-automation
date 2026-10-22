@@ -267,7 +267,7 @@ screens:
     panel_title_region: [324, 97, 486, 121]
     levels_region: [410, 1023, 302, 121]
     required_region: [324, 1364, 432, 194]
-    radial_region: [453, 1218, 280, 267]
+    radial_region: [453, 1218, 280, 267]   # историческая; с центром здания → щедрое поле
     confirm_region: [594, 2192, 486, 243]
     timer_region: [648, 2192, 324, 146]
     # Найденные элементы на эталонном кадре 1080x2436:
@@ -276,6 +276,17 @@ screens:
     green_gem_confirm: [280, 2258]   # не нажимать
     timer_example: "11:52"           # 712 секунд
     levels_example: "LV.4 -> LV.5"
+    # Live 2026-10-22 (reset-камера): template spot `building_wall_tower`;
+    # тап = центр шаблона + (tap_dy × scale); tap_dy: 30; reset-камера:
+    # тап `(476,1379)` (scale 0.9, conf 0.717) → кольцо `(577,1374)` conf 0.984
+    # → панель wall LV.5→LV.6, timer 4277 c → синяя кнопка неактивна (HSV sat 22.4).
+    tap_point_reset_camera: [476, 1379]
+    tap_dy: 30
+    radial_live: [577, 1374]
+    panel_context: "wall / LV.5 -> LV.6 / duration 4277"
+    confirm_live: [820, 2315]
+    confirm_state: "inactive_gray"   # не нажимать при нехватке требований
+    task_status: "enabled: false (Стена LV.5, требования замка/лорда)"
 
   city_gifts:
     # Подарок торговца с зелёной галочкой над повозкой.
