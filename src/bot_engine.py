@@ -353,6 +353,11 @@ class BotEngine:
                 time.sleep(3)
             return
 
+        if getattr(self.client, "is_phone_call_active", None) and self.client.is_phone_call_active():
+            logger.info("[Safety] Активен телефонный вызов. Ожидание завершения разговора...")
+            time.sleep(3)
+            return
+
         if not self.client.is_game_foreground(self._package):
             self._ensure_game_foreground()
             return

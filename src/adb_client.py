@@ -571,13 +571,42 @@ class AdbClient:
             return False
 
     def is_game_foreground(self, package_name: str) -> bool:
+        """Проверяет, что игра находится именно в активном фокусе (на переднем плане)."""
         try:
-            result = self._run_cmd(["shell", "dumpsys", "window", "windows"], timeout=max(6, self.timeout))
+            result = self._run_cmd(["shell", "dumpsys", "window"], timeout=max(6, self.timeout))
             output = self._decode(result.stdout)
+            focused_lines = [
+                line for line in output.splitlines()
+                if "mCurrentFocus" in line or "mFocusedApp" in line
+            ]
+            if focused_lines:
+                return any(package_name in line for line in focused_lines)
             return package_name in output
         except Exception as exc:  # noqa: BLE001
             logger.debug(f"Не удалось проверить foreground: {exc}")
             return False
+
+    def is_phone_call_active(self) -> bool:
+        """Проверяет наличие активного телефонного вызова (звонок, разговор).
+
+        Критическая защита: если пользователь разговаривает по телефону,
+        любые автоматические клики и переключения приложений блокируются,
+        чтобы не сбросить звонок и не мешать разговору.
+        """
+        try:
+            result = self._run_cmd(
+                ["shell", "dumpsys", "telephony.registry"], timeout=max(5, self.timeout)
+            )
+            output = self._decode(result.stdout)
+            for line in output.splitlines():
+                if "mCallState=" in line:
+                    val = line.split("mCallState=")[-1].strip()
+                    # 1 = CALL_STATE_RINGING, 2 = CALL_STATE_OFFHOOK (активный разговор)
+                    if val.isdigit() and int(val) in (1, 2):
+                        return True
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(f"Не удалось проверить статус звонка: {exc}")
+        return False
 
     # ------------------------------------------------------------------
     # Удобные обёртки
