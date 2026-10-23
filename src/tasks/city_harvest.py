@@ -21,6 +21,10 @@ class CityHarvestTask(BaseTask):
             "bubble_iron",
             "bubble_wishing_well",
         ]
+        # Живой замер 2026-10-23: значок дерева темнее зернового и даёт
+        # 0.74–0.78 при пороге 0.78, поэтому часть значков пропускалась.
+        # Следующий конкурент — 0.62, запас на ложные срабатывания есть.
+        self.resource_thresholds = {"bubble_wood": 0.72}
 
     def execute(self, screen: np.ndarray) -> bool:
         available = [name for name in self.resource_templates if self.vision.has_template(name)]
@@ -47,7 +51,11 @@ class CityHarvestTask(BaseTask):
 
         for res_tmpl in available:
             bubbles = self.vision.find_all(
-                screen, res_tmpl, threshold=0.78, min_distance=40, region=playfield
+                screen,
+                res_tmpl,
+                threshold=self.resource_thresholds.get(res_tmpl, 0.78),
+                min_distance=40,
+                region=playfield,
             )
             if bubbles:
                 logger.info(f"Найдено {len(bubbles)} значков сбора '{res_tmpl}'")

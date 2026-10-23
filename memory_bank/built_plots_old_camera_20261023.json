@@ -1,0 +1,158 @@
+[
+  {
+    "time": "2026-10-23T03:08:14",
+    "plot": [
+      1019,
+      1245
+    ],
+    "type": "farm",
+    "title": "Ферма",
+    "requirements": "text='5 yp. / 1 yp. 3aMOK 136,933 / 200' numbers=[5, 1, 136933, 200] ticks=2",
+    "blue_saturation": 152.9,
+    "blue_minus_red": 65.2
+  },
+  {
+    "time": "2026-10-23T03:09:41",
+    "plot": [
+      878,
+      1759
+    ],
+    "type": "sawmill",
+    "title": "Лесопилка",
+    "requirements": "text='5 yp. / 1 yp. 3aMOK 166,000 / 200' numbers=[5, 1, 166000, 200] ticks=2",
+    "blue_saturation": 152.9,
+    "blue_minus_red": 65.2
+  },
+  {
+    "time": "2026-10-23T03:11:59",
+    "plot": [
+      758,
+      1831
+    ],
+    "type": "camp",
+    "title": "Учебный лагерь",
+    "requirements": "text='5 yp. / 2 yp. 3aMOK 165,800 / 1 120' numbers=[5, 2, 165800, 1120] ticks=2",
+    "blue_saturation": 152.9,
+    "blue_minus_red": 65.2
+  },
+  {
+    "time": "2026-10-23T03:12:29",
+    "plot": [
+      848,
+      1364
+    ],
+    "type": "tent",
+    "title": "Медицинская палатка",
+    "requirements": "text='5 yp. / 4 yp. 3aMOK 165,680 / 245' numbers=[5, 4, 165680, 245] ticks=2",
+    "blue_saturation": 152.9,
+    "blue_minus_red": 65.2
+  },
+  {
+    "time": "2026-10-23T03:24:34",
+    "plot": [
+      1005,
+      1074
+    ],
+    "type": "farm",
+    "title": "Ферма",
+    "requirements": "text='5 yp. / 1 yp. 3aMOK 136,321 1/200' numbers=[5, 1, 136321, 200] ticks=2",
+    "blue_saturation": 152.9,
+    "blue_minus_red": 65.2
+  },
+  {
+    "time": "2026-10-23T03:25:02",
+    "plot": [
+      791,
+      1678
+    ],
+    "type": "sawmill",
+    "title": "Лесопилка",
+    "requirements": "text='5 yp. / 1 yp. 3aMOK 165,435 / 200' numbers=[5, 1, 165435, 200] ticks=2",
+    "blue_saturation": 152.9,
+    "blue_minus_red": 65.2
+  },
+  {
+    "time": "2026-10-23T03:25:35",
+    "plot": [
+      682,
+      1295
+    ],
+    "type": "camp",
+    "title": "Учебный лагерь",
+    "requirements": "text='5 yp. / 2 yp. 3aMOK 165,235 / 120' numbers=[5, 2, 165235, 120] ticks=2",
+    "blue_saturation": 152.9,
+    "blue_minus_red": 65.2
+  },
+  {
+    "time": "2026-10-23T03:26:19",
+    "plot": [
+      958,
+      1602
+    ],
+    "type": "tent",
+    "title": "Медицинская палатка",
+    "requirements": "text='5 yp. / 4 yp. 3aMOK 165,115 / 245' numbers=[5, 4, 165115, 245] ticks=2",
+    "blue_saturation": 152.9,
+    "blue_minus_red": 65.2
+  },
+  {
+    "time": "2026-10-23T03:26:38",
+    "plot": [
+      418,
+      1486
+    ],
+    "type": "farm",
+    "title": "Ферма",
+    "requirements": "text='5 yp. / 1 yp. 3aMOK 135,709 / 200' numbers=[5, 1, 135709, 200] ticks=2",
+    "blue_saturation": 152.9,
+    "blue_minus_red": 65.2
+  },
+  {
+    "time": "2026-10-23T03:27:02",
+    "plot": [
+      557,
+      1383
+    ],
+    "type": "sawmill",
+    "title": "Лесопилка",
+    "requirements": "text='5 yp. / 1 yp. 3aMOK 164,870 / 200' numbers=[5, 1, 164870, 200] ticks=2",
+    "blue_saturation": 152.9,
+    "blue_minus_red": 65.2
+  },
+  {
+    "time": "2026-10-23T03:27:31",
+    "plot": [
+      999,
+      944
+    ],
+    "type": "camp",
+    "title": "Учебный лагерь",
+    "requirements": "text='5 yp. / 2 yp. 3aMOK 164,670 / 1 120' numbers=[5, 2, 164670, 1120] ticks=2",
+    "blue_saturation": 152.9,
+    "blue_minus_red": 65.2
+  },
+  {
+    "time": "2026-10-23T03:28:08",
+    "plot": [
+      713,
+      1454
+    ],
+    "type": "tent",
+    "title": "Медицинская палатка",
+    "requirements": "text='5 yp. / 4 yp. 3aMOK 164,550 / 245' numbers=[5, 4, 164550, 245] ticks=2",
+    "blue_saturation": 152.9,
+    "blue_minus_red": 65.2
+  },
+  {
+    "time": "2026-10-23T03:28:32",
+    "plot": [
+      809,
+      1198
+    ],
+    "type": "farm",
+    "title": "Ферма",
+    "requirements": "text='5 yp. / 1 yp. 3aMOK 135,097 / 200' numbers=[5, 1, 135097, 200] ticks=2",
+    "blue_saturation": 152.9,
+    "blue_minus_red": 65.2
+  }
+]

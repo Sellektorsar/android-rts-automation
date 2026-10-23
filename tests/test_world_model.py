@@ -57,6 +57,16 @@ class WorldModelTimerTest(unittest.TestCase):
         self.model.clean_expired_timers()
         self.assertEqual(self.model.state["buildings"]["wall"]["level"], 6)
 
+    def test_castle_timer_raises_account_castle_level(self):
+        self.model.state["account"]["castle_level"] = 5
+        self.model.state["buildings"]["castle"]["level"] = 5
+        self.assertTrue(self.model.start_upgrade("castle", 60, current_level=5))
+        self.model.state["builders"]["builder_1"]["timer_end"] = time.time() - 1
+        completed = self.model.clean_expired_timers()
+        self.assertIn("building:castle", completed)
+        self.assertEqual(self.model.state["buildings"]["castle"]["level"], 6)
+        self.assertEqual(self.model.state["account"]["castle_level"], 6)
+
     def test_campaign_defaults_and_update(self):
         self.assertEqual(self.model.state["campaign"]["mode"], "Спаситель порядка")
         self.model.update_campaign(
@@ -78,6 +88,17 @@ class WorldModelTimerTest(unittest.TestCase):
         self.model.update_campaign(chapter=None, stage=None)
         self.assertEqual(self.model.state["campaign"]["chapter"], 4)
         self.assertEqual(self.model.state["campaign"]["stage"], 7)
+
+    def test_record_and_get_events(self):
+        self.model.record_event("battle:victory", "stage_7")
+        events = self.model.get_events()
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["kind"], "battle:victory")
+        self.assertEqual(events[0]["detail"], "stage_7")
+
+        self.model.record_event("crisis:food", "world_forest")
+        self.assertEqual(len(self.model.get_events()), 2)
+        self.assertEqual(self.model.get_events(limit=1)[0]["kind"], "crisis:food")
 
 
 if __name__ == "__main__":

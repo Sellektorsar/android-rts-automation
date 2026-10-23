@@ -38,6 +38,7 @@ from src.adb_client import AdbClient
 from src.perception import ScreenClassifier
 from src.tasks.building_upgrade import BuildingUpgradeTask
 from src.vision import Vision
+from tools.probe_city_grid import _building_label
 
 
 def _load_config(path: str) -> dict:
@@ -102,6 +103,12 @@ def main() -> int:
     parser.add_argument("--template", default="building_wall_tower")
     parser.add_argument("--building", default="wall")
     parser.add_argument(
+        "--point",
+        default=None,
+        help="Проверочный тап по ручной точке X,Y вместо поиска шаблона "
+        "(для верификации кадра и разметки нового шаблона)",
+    )
+    parser.add_argument(
         "--tap-dy",
         type=int,
         default=30,
@@ -150,25 +157,46 @@ def main() -> int:
             }
         ],
     )
-    match = vision.find_template_multiscale(
-        frame,
-        args.template,
-        threshold=BuildingUpgradeTask.SPOT_TEMPLATE_THRESHOLD,
-        scales=BuildingUpgradeTask.SPOT_TEMPLATE_SCALES,
-    )
-    if match is None:
-        result["error"] = "building_template_not_found"
-        _output(result, args.json)
-        return 5
-    bx, by, conf, scale = match
-    tap_x = int(bx)
-    tap_y = int(by) + round(args.tap_dy * scale)
-    result["building_match"] = {
-        "x": int(bx),
-        "y": int(by),
-        "confidence": round(float(conf), 3),
-        "scale": round(float(scale), 2),
-    }
+    if args.point:
+        try:
+            tap_x, tap_y = (int(v) for v in args.point.split(","))
+        except ValueError:
+            result["error"] = "bad_point_format"
+            _output(result, args.json)
+            return 5
+        result["manual_point"] = [tap_x, tap_y]
+    else:
+        match = vision.find_template_multiscale(
+            frame,
+            args.template,
+            threshold=BuildingUpgradeTask.SPOT_TEMPLATE_THRESHOLD,
+            scales=BuildingUpgradeTask.SPOT_TEMPLATE_SCALES,
+            blur=BuildingUpgradeTask.SPOT_TEMPLATE_BLUR,
+        )
+        if match is None:
+            result["error"] = "building_template_not_found"
+            _output(result, args.json)
+            return 5
+        bx, by, conf, scale = match
+        tap_x = int(bx)
+        tap_y = int(by) + round(args.tap_dy * scale)
+        result["building_match"] = {
+            "x": int(bx),
+            "y": int(by),
+            "confidence": round(float(conf), 3),
+            "scale": round(float(scale), 2),
+        }
+        template = vision.templates_cache.get(args.template)
+        if template is not None:
+            marked = frame.copy()
+            th, tw = template.shape[:2]
+            hw, hh = int(tw * scale / 2), int(th * scale / 2)
+            cv2.rectangle(marked, (bx - hw, by - hh), (bx + hw, by + hh), (0, 255, 0), 3)
+            cv2.line(marked, (bx, by), (tap_x, tap_y), (255, 0, 0), 2)
+            cv2.circle(marked, (tap_x, tap_y), 10, (0, 0, 255), -1)
+            path = save_dir / f"probe_bld_match_{args.building}.png"
+            cv2.imwrite(str(path), marked)
+            result["match_frame"] = str(path)
 
     if args.dry_run:
         result["dry_run"] = True
@@ -176,28 +204,39 @@ def main() -> int:
         return 0
 
     # --- Живой режим: тап по зданию -----------------------------------
-    client.tap(tap_x, tap_y)
-    time.sleep(1.5)
+    def _search_radial(candidate):
+        return spot._find_radial(candidate, center=(tap_x, tap_y))
 
-    radial = None
-    radial_frame = None
-    deadline = time.time() + 4.5
-    while time.time() < deadline:
-        candidate = client.get_screenshot(fresh=True)
-        if candidate is None:
-            time.sleep(0.6)
-            continue
-        radial_region = spot._radial_region(candidate, center=(tap_x, tap_y))
-        found = vision.find_template(
-            candidate,
-            BuildingUpgradeTask.RADIAL_TEMPLATE,
-            threshold=0.80,
-            region=radial_region,
-        )
-        if found:
-            radial, radial_frame = found, candidate
-            break
-        time.sleep(0.5)
+    def _wait_radial(timeout: float):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            candidate = client.get_screenshot(fresh=True)
+            if candidate is None:
+                time.sleep(0.6)
+                continue
+            found = _search_radial(candidate)
+            if found:
+                return found, candidate
+            time.sleep(0.5)
+        return None, None
+
+    # Меню могло остаться открытым с прошлого действия: тап по зданию в
+    # этом состоянии его закрывает, а не открывает.
+    radial, radial_frame = _search_radial(frame), frame
+    result["menu_already_open"] = radial is not None
+    if radial is None:
+        client.tap(tap_x, tap_y)
+        time.sleep(1.5)
+        radial, radial_frame = _wait_radial(4.5)
+    if radial is None:
+        # Повторный тап только после проверки, что меню точно закрыто:
+        # иначе он погасит меню, открывшееся с задержкой.
+        confirm_frame = client.get_screenshot(fresh=True)
+        if confirm_frame is not None and _search_radial(confirm_frame) is None:
+            result["tap_retry"] = True
+            client.tap(tap_x, tap_y)
+            time.sleep(1.5)
+            radial, radial_frame = _wait_radial(4.5)
 
     if radial is None:
         result["error"] = "radial_not_found"
@@ -214,6 +253,8 @@ def main() -> int:
 
     rx, ry, rconf = radial[0], radial[1], radial[2]
     result["radial_match"] = {"x": int(rx), "y": int(ry), "confidence": round(float(rconf), 3)}
+    label_name, label_raw = _building_label(radial_frame, (tap_x, tap_y))
+    result["building_label"] = {"name": label_name, "raw": label_raw[:80]}
     path = save_dir / f"probe_bld_radial_{args.building}.png"
     cv2.imwrite(str(path), radial_frame)
 
@@ -228,11 +269,12 @@ def main() -> int:
         if candidate is None:
             time.sleep(0.6)
             continue
-        required = vision.find_template(
+        required = vision.find_template_multiscale(
             candidate,
             BuildingUpgradeTask.REQUIRED_TEMPLATE,
-            threshold=0.78,
+            threshold=0.75,
             region=spot._required_region(candidate),
+            scales=(0.8, 0.9, 1.0, 1.1, 1.2),
         )
         if required:
             panel_frame = candidate

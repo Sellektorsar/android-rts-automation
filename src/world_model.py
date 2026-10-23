@@ -124,6 +124,12 @@ class WorldModel:
                     self.state["buildings"][target]["upgrading"] = False
                     self.state["buildings"][target]["timer_end"] = None
                     self.state["buildings"][target]["level"] += 1
+                    if target == "castle":
+                        # Уровень замка — условие для следующих уровней всех
+                        # зданий, поэтому он же должен открыть новый кап.
+                        self.state["account"]["castle_level"] = self.state["buildings"][
+                            "castle"
+                        ]["level"]
                     completed.append(f"building:{target}")
                 else:
                     completed.append(f"builder:{b_id}")
@@ -268,6 +274,23 @@ class WorldModel:
         """Сколько секунд до ближайшего таймера (inf, если таймеров нет)."""
         event = self.next_event()
         return max(0.0, event[0] - time.time()) if event else float("inf")
+
+    def record_event(self, kind: str, detail: str = "") -> None:
+        """Фиксировать игровое событие (кризис, победа, поражение, награда).
+
+        Храним последние 200 событий — это достаточно для журнала стабильности
+        и анализа цепных реакций катастроф.
+        """
+        events = self.state.setdefault("events", [])
+        events.append({"at": time.time(), "kind": kind, "detail": detail})
+        if len(events) > 200:
+            del events[:-200]
+        self.save()
+
+    def get_events(self, limit: int = 50) -> list:
+        """Последние N событий в порядке записи."""
+        events = list(self.state.get("events") or [])
+        return events[-max(0, limit):]
 
     def get_summary(self) -> str:
         """Короткая строка состояния для heartbeat/логов."""

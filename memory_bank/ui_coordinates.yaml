@@ -208,17 +208,25 @@ screens:
       chat_ticker: [540, 2285]
     right_hud:
       demon_invasion: [925, 695]
-    plots:
-      plot_a: [670, 1320]
-      plot_b: [920, 1440]
-      plot_c: [860, 1650]
-      plot_d: [670, 1830]
-      plot_e: [340, 1920]
-      plot_f: [560, 2060]
+    plots: {}   # отключены 2026-10-23: точки были слепыми и только тратили время
     buildings:
+      # Камера по умолчанию 2026-10-23. Здания ищутся шаблонами: центр
+      # шаблона + tap_dy×scale = кликабельная подошва. Историческая wall
+      # точка [639, 1500] после смены камеры не используется.
       castle: [200, 1150]
       castle_level_badge: [160, 1220]
-      wall: [639, 1500]          # проверено: открывает радиальное «Улучшить»
+      wall:
+        template: "building_wall_gate"
+        tap_dy: 73
+        verified: "2026-10-23: живой тап (830,1430) -> баннер «Стена Замка»; порог 0.75"
+      hospital:
+        template: "building_hospital"
+        tap_dy: 55
+        verified: "2026-10-23: живой тап (400,1395) -> баннер «Госпиталь»; порог 0.85 (красные церкви дают 0.65–0.75)"
+      forge:
+        template: "building_forge"
+        tap_dy: 128
+        verified: "2026-10-23: conf 0.97@0.98 центр (472,441) -> тап (472,566) -> «Улучшить» 0.83; порог 0.80"
       locked_temple: [590, 350]
     campaign_portal:
       # Проверено 2026-10-22: основание портала открывает карту кампании.
@@ -287,6 +295,40 @@ screens:
     confirm_live: [820, 2315]
     confirm_state: "inactive_gray"   # не нажимать при нехватке требований
     task_status: "enabled: false (Стена LV.5, требования замка/лорда)"
+    # Live 2026-10-23, шаблонный поиск кузницы (building_forge):
+    # здание conf 0.923@1.0 → тап (528,621) → «Улучшить» (388,825)
+    # conf 0.794@scale 0.9 → панель «Кузница» LV.5→LV.6, timer 1188 c,
+    # требуется Замок 6 ур. (сейчас 5) → синяя кнопка серая (S=22, B-R=-4).
+    forge_live_2026_10_23:
+      building_match: {x: 528, y: 528, confidence: 0.923, scale: 1.0}
+      radial: {x: 388, y: 825, confidence: 0.794, scale: 0.9}
+      panel: "forge / LV.5 -> LV.6 / duration 1188"
+      requirement_blocker: "Замок 5 ур. / 6 ур."
+      confirm_state: "inactive_gray"
+      note: "радиальное меню — мировой слой: искать мультимасштабно (0.8..1.2), порог 0.75"
+
+    forge_camera_shift_2026_10_23:
+      # Камера сдвинута свайпом; спрайт перерисован ~на 2% меньше.
+      building_match: {x: 768, y: 528, confidence: 0.764, scale: 0.98}
+      radial: {x: 648, y: 825, confidence: 0.798}
+      panel: "forge / LV.5 -> LV.6 / duration 1188"
+      confirm_state: "inactive_gray"
+      single_scale_failure: "conf 0.661–0.685 при scale 1.0 — ниже порога 0.70"
+      grid_scan_fallback: "2 попадания, conf 0.798, OCR «Ky3HMLa»"
+      fix: "GaussianBlur k=5 для шаблона и кадра + масштабы 0.80..1.20"
+      restored_camera: {x: 546, y: 528, confidence: 0.950, scale: 1.0}
+
+    forge_sweep_2026_10_23:
+      # Камера сдвинута вручную; кузница была вне стартового кадра.
+      # Координаты действительны только для этой позиции камеры.
+      sweep: {enabled: true, cols: 3, rows: 3, step_px: 600}
+      found_at_cell: "-600,0 (позиция 5 из 8, 42.1 c)"
+      direct_search: "не найдена"
+      building_match: {x: 470, y: 468, confidence: 0.756, scale: 1.05}
+      tap: [470, 566]
+      radial: {x: 326, y: 788, confidence: 0.805}
+      panel: "forge / LV.5 -> LV.6 / duration 1188"
+      confirm_state: "inactive_gray"
 
   city_gifts:
     # Подарок торговца с зелёной галочкой над повозкой.
@@ -294,3 +336,46 @@ screens:
     gift_icon: [865, 570]
     reward_close_tap: [540, 1997]
     reward_template: "banner_reward_received"
+
+  city_district:
+    # Квартал построек. Координаты ПРИВЯЗАНЫ К КАДРУ: действительны только
+    # для вида 2026-10-23 (logs/inspect/align_live.png). После сдвига камеры
+    # переносить гомографией REF->LIVE (ADR-022), не тапать по старым
+    # пикселям. Человекочитаемый разбор — memory_bank/city_district.md.
+    frame_ref: "logs/inspect/align_live.png"
+    camera_frame_id: "live_2026_10_23"
+    homography_ref_to_live:
+      # Эталон точек config.yaml — logs/inspect/camp455_retry_now.png.
+      # SIFT+RANSAC: good=1000, inliers=744, точность якорей ~1-3 px.
+      matrix: [[1.00733, -0.04095, -126.88843],
+               [-0.00194, 1.01484, 10.72352],
+               [0.0, 0.0, 1.0]]
+    level_badge:
+      # Диск с цифрой уровня под зданием. Кольцо светится, если улучшение
+      # доступно; бледный диск — здание упёрлось в ограничение.
+      # Runtime-детектора нет (HSV ловит HUD-иконки, OCR цифры не читает).
+      glow_means: "upgrade_available"
+      pale_means: "capped"
+    buildings:
+      D1:  {tap: [390, 955],  badge: [415, 995],  level: 1, look: "бело-красный форт"}
+      D2:  {tap: [235, 1010], badge: [262, 1065], level: 5, look: "ферма (ветряк + поле)"}
+      D3:  {tap: [375, 1055], badge: [407, 1112], level: 5, look: "ферма"}
+      D4:  {tap: [170, 1190], badge: [192, 1245], level: 5, look: "ферма"}
+      D5:  {tap: [320, 1250], badge: [345, 1310], level: 5, look: "ферма"}
+      D6:  {tap: [550, 1150], badge: [548, 1177], level: 5, look: "лесопилка",
+            verified: "живой тап (584,1105) -> баннер 'Лесопилка'"}
+      D7:  {tap: [200, 1410], badge: [225, 1425], level: 5, look: "кластер палаток"}
+      D8:  {tap: [55, 1500],  badge: [37, 1512],  level: 5, look: "палатки у края"}
+      D9:  {tap: [380, 1460], badge: [410, 1465], level: 2, look: "палатки", ring: true}
+      D10: {tap: [545, 1300], badge: [565, 1350], level: 1, look: "тёмно-красное здание", ring: true}
+      D11: {tap: [575, 1470], badge: [582, 1570], level: 1, look: "ветряк у воды", ring: true}
+      D12: {tap: [85, 1650],  badge: null, level: null, look: "большая лесопилка", note: "уровень не подтверждён"}
+      D13: {tap: [250, 1690], badge: null, level: null, look: "кластер палаток", note: "уровень не подтверждён"}
+      D14: {tap: [435, 1680], badge: [430, 1755], level: 1, look: "бело-красный форт", ring: true}
+      D15: {tap: [490, 1800], badge: null, level: null, look: "бело-красный форт",
+            note: "бейдж скрыт баннером события"}
+    empty_plots: [[680, 1440], [770, 1510]]
+    obscured: {approx: [20, 1880], behind: "иконка 'Событие'"}
+    hazards:
+      event_hotspot: {point: [1000, 700], opens: "модалка 'Уровень Замка должен быть 15'"}
+      deselection: "пустые точки неба/моря не использовать; закрытие — стрелка панели"

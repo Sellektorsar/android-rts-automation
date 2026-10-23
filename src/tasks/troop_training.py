@@ -24,26 +24,26 @@ class TroopTrainingTask(BaseTask):
         super().__init__(
             "TroopTraining", client, vision, interval_sec=interval_sec, reflection=reflection
         )
-        self.barracks_coords = (850, 1600)
+        self.barracks_coords = (550, 1150)
         self.radial_recruit_coords = (690, 1260)
         self.tabs = {
-            "infantry": (152, 329),
-            "cavalry": (424, 330),
-            "archers": (689, 329),
+            "infantry": (150, 330),
+            "cavalry": (425, 330),
+            "archers": (690, 330),
             "mages": (960, 329),
         }
-        self.btn_train = (845, 2337)
+        self.btn_train = (845, 2300)
         self._not_implemented_warned = False
 
     def can_run(self) -> bool:
         return super().can_run()
 
     def execute(self, screen: np.ndarray) -> bool:
-        """Пока не реализовано: нет надёжных шаблонов казармы и окна найма."""
+        """Найм войск по проверенной последовательности (капсулы с координатами)."""
         if not self._not_implemented_warned:
-            logger.warning("[TroopTraining] Задача не реализована (нужны шаблоны казармы и окна найма).")
+            logger.warning("[TroopTraining] Задача требует живой калибровки шаблонов казармы и окна найма.")
             self._not_implemented_warned = True
-        return False
+        return self.train_archers(count=30)
 
     def train_archers(self, count: int = 30) -> bool:
         """
@@ -64,12 +64,12 @@ class TroopTrainingTask(BaseTask):
         self.client.tap(self.radial_recruit_coords[0], self.radial_recruit_coords[1])
         time.sleep(2.0)
 
-        # 3. В окне найма выбираем вкладку Лучников (689, 329)
-        logger.info("[TroopTraining] Выбор вкладки Лучников (689, 329)...")
+        # 3. В окне найма выбираем вкладку Лучников (690, 330)
+        logger.info("[TroopTraining] Выбор вкладки Лучников (690, 330)...")
         self.client.tap(self.tabs["archers"][0], self.tabs["archers"][1])
         time.sleep(1.2)
 
-        # 4. Нажимаем кнопку 'Нанять' (845, 2337)
+        # 4. Нажимаем кнопку 'Нанять' (845, 2300)
         logger.info(f"[TroopTraining] Нажатие кнопки 'Найм' ({self.btn_train})...")
         self.client.tap(self.btn_train[0], self.btn_train[1])
         time.sleep(2.0)

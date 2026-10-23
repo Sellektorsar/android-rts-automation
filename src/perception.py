@@ -224,10 +224,33 @@ DEFAULT_PROFILES: Tuple[ScreenProfile, ...] = (
         keywords=("требуется", "улучшить", "уровень здания"),
     ),
     ScreenProfile(
+        state=GameState.PLOT_BUILD,
+        priority=23,
+        # Экран постройки на пустой ячейке: синяя «Построить» справа внизу
+        # и кнопка с гемом слева внизу. Обе кнопки обязательны: панель
+        # улучшения тоже имеет синюю кнопку, но без второй пары.
+        groups=(
+            (Anchor("btn_build", 0.85, (0.55, 0.90, 1.00, 1.00)),),
+            (Anchor("btn_build_free", 0.85, (0.00, 0.90, 0.45, 1.00)),),
+        ),
+        keywords=("получить сейчас", "бесплатно", "построить"),
+    ),
+    ScreenProfile(
         state=GameState.BUILDING_MENU,
         priority=24,
         # Радиальное меню выбранного здания (Детали / Улучшить / Оборона).
-        groups=((Anchor("btn_building_upgrade", 0.80, (0.42, 0.50, 0.68, 0.61)),),),
+        # На живом кадре 2026-10-23 кнопка — тёмный круг с золотым шевроном
+        # (btn_radial_upgrade); панельный btn_building_upgrade даёт на ней
+        # лишь 0.676, поэтому он оставлен запасным вариантом с низким порогом.
+        groups=(
+            (
+                Anchor("btn_radial_upgrade", 0.82, (0.18, 0.36, 0.82, 0.86)),
+                Anchor("btn_radial_upgrade_wide", 0.84, (0.00, 0.50, 1.00, 0.86)),
+                Anchor("btn_radial_upgrade_medic", 0.84, (0.00, 0.50, 1.00, 0.86)),
+                Anchor("btn_radial_upgrade_gold", 0.84, (0.00, 0.50, 1.00, 0.86)),
+                Anchor("btn_building_upgrade", 0.70, (0.42, 0.50, 0.68, 0.61)),
+            ),
+        ),
         keywords=("детали", "улучшить", "оборона"),
     ),
     ScreenProfile(

@@ -35,6 +35,7 @@ class GameState:
     # Внутренние меню
     BUILDING_MENU = "building_menu"     # Радиальное меню выбранного здания
     BUILDING_UPGRADE = "building_upgrade"  # Панель улучшения (требования + кнопка)
+    PLOT_BUILD = "plot_build"           # Экран постройки на пустой ячейке
     RESEARCH_MENU = "research_menu"     # Институт / дерево исследований
     TRAINING_MENU = "training_menu"     # Казармы / найм войск
     ALLIANCE_MENU = "alliance_menu"     # Меню альянса / помощь

@@ -35,6 +35,42 @@ class VisionFindAllTest(unittest.TestCase):
         self.assertEqual(centers, {(70, 60), (40, 130)})
 
 
+class VisionFindAllMultiscaleTest(unittest.TestCase):
+    """Разноразмерные вхождения одного шаблона (перспектива ячеек города)."""
+
+    def setUp(self):
+        self.vision = Vision(templates_dir="assets")
+        rng = np.random.default_rng(11)
+        self.template = rng.integers(0, 256, (20, 24, 3), dtype=np.uint8)
+        self.vision.add_template("test_plot", self.template)
+
+    def test_finds_two_sizes_with_nms(self):
+        big = cv2.resize(self.template, (36, 30), interpolation=cv2.INTER_LINEAR)
+        frame = np.zeros((300, 300, 3), dtype=np.uint8)
+        frame[40:60, 50:74] = self.template
+        frame[150:180, 180:216] = big
+        matches = self.vision.find_all_templates_multiscale(
+            frame, "test_plot", threshold=0.9, min_distance=40, scales=(1.0, 1.5)
+        )
+        centers = {(x, y) for x, y, _, _ in matches}
+        self.assertEqual(centers, {(62, 50), (198, 165)})
+        sizes = {rel for _, _, _, rel in matches}
+        self.assertEqual(sizes, {1.0, 1.5})
+
+    def test_region_offsets_coordinates(self):
+        frame = np.zeros((300, 300, 3), dtype=np.uint8)
+        frame[150:170, 180:204] = self.template
+        matches = self.vision.find_all_templates_multiscale(
+            frame,
+            "test_plot",
+            threshold=0.9,
+            min_distance=40,
+            region=(100, 100, 200, 200),
+            scales=(1.0,),
+        )
+        self.assertEqual([(x, y) for x, y, _, _ in matches], [(192, 160)])
+
+
 class VisionMultiscaleTest(unittest.TestCase):
     """Шаблон вставляется в кадр в другом размере — find_template_multiscale
     должен найти его и вернуть относительный масштаб."""

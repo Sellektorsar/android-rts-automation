@@ -1,0 +1,199 @@
+{
+  "pt:farm:600,1030": {
+    "key": "pt:farm:600,1030",
+    "name": "farm",
+    "point": [
+      600,
+      1030
+    ],
+    "template": null,
+    "level": 5,
+    "target_level": 6,
+    "castle_level": 5,
+    "status": "capped",
+    "updated": "2026-10-23T04:36:42"
+  },
+  "pt:farm:750,1080": {
+    "key": "pt:farm:750,1080",
+    "name": "farm",
+    "point": [
+      750,
+      1080
+    ],
+    "template": null,
+    "level": 5,
+    "target_level": 6,
+    "castle_level": 5,
+    "status": "capped",
+    "updated": "2026-10-23T04:37:20"
+  },
+  "pt:farm:700,1240": {
+    "key": "pt:farm:700,1240",
+    "name": "farm",
+    "point": [
+      700,
+      1240
+    ],
+    "template": null,
+    "level": 5,
+    "target_level": 6,
+    "castle_level": 5,
+    "status": "capped",
+    "updated": "2026-10-23T04:50:11"
+  },
+  "pt:farm:545,1200": {
+    "key": "pt:farm:545,1200",
+    "name": "farm",
+    "point": [
+      545,
+      1200
+    ],
+    "template": null,
+    "level": 5,
+    "target_level": 6,
+    "castle_level": 5,
+    "status": "capped",
+    "updated": "2026-10-23T04:39:58"
+  },
+  "pt:camp:430,1260": {
+    "key": "pt:camp:430,1260",
+    "name": "camp",
+    "point": [
+      430,
+      1260
+    ],
+    "template": null,
+    "level": 5,
+    "target_level": 6,
+    "castle_level": 5,
+    "status": "capped",
+    "updated": "2026-10-23T05:05:36"
+  },
+  "pt:sawmill:280,1370": {
+    "key": "pt:sawmill:280,1370",
+    "name": "sawmill",
+    "point": [
+      280,
+      1370
+    ],
+    "template": null,
+    "level": 5,
+    "target_level": 6,
+    "castle_level": 5,
+    "status": "capped",
+    "updated": "2026-10-23T04:51:30"
+  },
+  "pt:sawmill:300,1560": {
+    "key": "pt:sawmill:300,1560",
+    "name": "sawmill",
+    "point": [
+      300,
+      1560
+    ],
+    "template": null,
+    "level": 5,
+    "target_level": 6,
+    "castle_level": 5,
+    "status": "capped",
+    "updated": "2026-10-23T04:52:24"
+  },
+  "pt:sawmill:482,1670": {
+    "key": "pt:sawmill:482,1670",
+    "name": "sawmill",
+    "point": [
+      482,
+      1670
+    ],
+    "template": null,
+    "level": 5,
+    "target_level": 6,
+    "castle_level": 5,
+    "status": "capped",
+    "updated": "2026-10-23T05:06:19"
+  },
+  "pt:tent:432,1440": {
+    "key": "pt:tent:432,1440",
+    "name": "tent",
+    "point": [
+      432,
+      1440
+    ],
+    "template": null,
+    "level": 4,
+    "target_level": 5,
+    "castle_level": 5,
+    "status": "upgraded",
+    "updated": "2026-10-23T05:27:07"
+  },
+  "pt:tent:590,1350": {
+    "key": "pt:tent:590,1350",
+    "name": "tent",
+    "point": [
+      590,
+      1350
+    ],
+    "template": null,
+    "level": 1,
+    "target_level": 2,
+    "castle_level": 5,
+    "status": "upgraded",
+    "updated": "2026-10-23T05:46:16"
+  },
+  "pt:tent:625,1580": {
+    "key": "pt:tent:625,1580",
+    "name": "tent",
+    "point": [
+      625,
+      1580
+    ],
+    "template": null,
+    "level": 3,
+    "target_level": 4,
+    "castle_level": 5,
+    "status": "upgraded",
+    "updated": "2026-10-23T05:28:31"
+  },
+  "pt:sawmill:650,1780": {
+    "key": "pt:sawmill:650,1780",
+    "name": "sawmill",
+    "point": [
+      650,
+      1780
+    ],
+    "template": null,
+    "level": 5,
+    "target_level": 6,
+    "castle_level": 5,
+    "status": "capped",
+    "updated": "2026-10-23T05:20:55"
+  },
+  "pt:camp:455,1800": {
+    "key": "pt:camp:455,1800",
+    "name": "camp",
+    "point": [
+      455,
+      1800
+    ],
+    "template": null,
+    "level": 1,
+    "target_level": 2,
+    "castle_level": 5,
+    "status": "upgraded",
+    "updated": "2026-10-23T05:29:15"
+  },
+  "pt:sawmill:900,1160": {
+    "key": "pt:sawmill:900,1160",
+    "name": "sawmill",
+    "point": [
+      900,
+      1160
+    ],
+    "template": null,
+    "level": 5,
+    "target_level": 6,
+    "castle_level": 5,
+    "status": "capped",
+    "updated": "2026-10-23T05:32:33"
+  },
+  "_meta": "ПАСПОРТА УСТАРЕЛИ (ревизия 2026-10-23): минимум 4 записи содержат чужой тип (pt:farm:750,1080 = «Лесопилка», подтверждено живым тапом), а pt:farm:700,1240 после застройки попадает в новое здание LV.1. Ключи pt:* привязаны к эталонному кадру camp455_retry_now.png; после сдвига камеры статус capped может относиться не к тому зданию. Требуется полный калибровочный обход: memory_bank/city_district.md, ADR-022/023."
+}

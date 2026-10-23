@@ -26,18 +26,22 @@ import yaml
 from loguru import logger
 
 from src.adb_client import AdbClient
+from src.fast_capture import FastCapture
 from src.fsm import GameFSM, GameState
 from src.human_input import sleep_human
 from src.perception import HudParser, HudState, ScreenClassifier, looks_like_payment
 from src.reflection import ReflectionLog
 from src.tasks.alliance import AllianceTask
 from src.tasks.base_task import BaseTask
+from src.tasks.battle import BattleTask
 from src.tasks.building_upgrade import BuildingUpgradeTask
 from src.tasks.chapter_quest import ChapterQuestTask
+from src.tasks.city_build import CityBuildTask
 from src.tasks.city_gifts import CityGiftsTask
 from src.tasks.city_harvest import CityHarvestTask
 from src.tasks.popup_closer import PopupCloserTask
 from src.tasks.quest_rewards import QuestRewardsTask
+from src.tasks.research import ResearchTask
 from src.tasks.troop_training import TroopTrainingTask
 from src.vision import Vision
 from src.workflow_engine import WorkflowEngine
@@ -58,6 +62,20 @@ class BotEngine:
             frame_ttl=dev_cfg.get("frame_ttl_sec", 1.5),
         )
         self.keep_screen_on = dev_cfg.get("keep_screen_on", True)
+
+        self.fast_capture: Optional[FastCapture] = None
+        if dev_cfg.get("fast_capture", True):
+            try:
+                self.fast_capture = FastCapture(
+                    adb_path=self.client.adb_path,
+                    serial=f"{self.client.ip}:{self.client.port}",
+                    width=540,
+                    height=1218,
+                    record_time_limit=int(dev_cfg.get("fast_capture_time_limit", 180)),
+                )
+            except Exception as exc:
+                logger.warning(f"[FastCapture] Не удалось подготовить быстрый поток: {exc}")
+                self.fast_capture = None
 
         self.vision = Vision(templates_dir="assets")
         perception_cfg = self.config.get("perception", {})
@@ -166,6 +184,30 @@ class BotEngine:
                     spots=upgrade_cfg.get("spots"),
                     reflection=self.reflection,
                     world=self.world,
+                    sweep=upgrade_cfg.get("sweep"),
+                    castle=upgrade_cfg.get("castle"),
+                    align_district=upgrade_cfg.get("align_district", True),
+                )
+            )
+
+        if task_cfg.get("battle_auto", {}).get("enabled", False):
+            self.tasks.append(
+                BattleTask(
+                    self.client,
+                    self.vision,
+                    interval_sec=task_cfg.get("battle_auto", {}).get("interval_sec", 30),
+                    reflection=self.reflection,
+                    world=self.world,
+                )
+            )
+
+        if task_cfg.get("research_auto", {}).get("enabled", False):
+            self.tasks.append(
+                ResearchTask(
+                    self.client,
+                    self.vision,
+                    interval_sec=task_cfg.get("research_auto", {}).get("interval_sec", 180),
+                    reflection=self.reflection,
                 )
             )
 
@@ -199,6 +241,18 @@ class BotEngine:
                 )
             )
 
+        if task_cfg.get("city_build", {}).get("enabled", False):
+            build_cfg = task_cfg.get("city_build", {})
+            self.tasks.append(
+                CityBuildTask(
+                    self.client,
+                    self.vision,
+                    interval_sec=build_cfg.get("interval_sec", 15),
+                    plots=build_cfg.get("plots"),
+                    reflection=self.reflection,
+                )
+            )
+
         if task_cfg.get("city_gifts", {}).get("enabled", True):
             self.tasks.append(
                 CityGiftsTask(
@@ -223,6 +277,7 @@ class BotEngine:
             logger.error("Критическая ошибка: невозможно подключиться к устройству.")
             return
 
+        self._start_fast_capture()
         self.client.wake_screen()
         if self.keep_screen_on:
             self.client.keep_screen_awake(True)
@@ -245,6 +300,8 @@ class BotEngine:
             logger.info("Остановка бота пользователем (Ctrl+C).")
         finally:
             self.running = False
+            if self.fast_capture is not None:
+                self.fast_capture.stop()
             self.world.save()
             if self.keep_screen_on:
                 self.client.keep_screen_awake(False)
@@ -265,6 +322,24 @@ class BotEngine:
     # ------------------------------------------------------------------
     # Один такт
     # ------------------------------------------------------------------
+    def _start_fast_capture(self) -> None:
+        if self.fast_capture is None:
+            return
+        self.fast_capture.serial = f"{self.client.ip}:{self.client.port}"
+        if not self.fast_capture.start():
+            self.fast_capture = None
+
+    def _capture_frame(self) -> Optional[np.ndarray]:
+        """Кадр для задач: быстрый поток, при недоступности — обычный скриншот."""
+        if self.fast_capture is not None:
+            frame = self.fast_capture.read(timeout_sec=0.9)
+            if frame is not None:
+                screen_size = self.client.screen_size
+                if screen_size is not None and frame.shape[1::-1] != screen_size:
+                    frame = cv2.resize(frame, screen_size, interpolation=cv2.INTER_LINEAR)
+                return frame
+        return self.client.get_screenshot(fresh=False)
+
     def tick(self) -> None:
         self.stats["ticks"] += 1
 
@@ -282,7 +357,7 @@ class BotEngine:
             self._ensure_game_foreground()
             return
 
-        frame = self.client.get_screenshot(fresh=False)
+        frame = self._capture_frame()
         if frame is None:
             logger.warning("Нет кадра с устройства, пауза.")
             time.sleep(2)
@@ -350,8 +425,22 @@ class BotEngine:
     # ------------------------------------------------------------------
     def _allowed_states(self, task: BaseTask) -> set[str]:
         # Задачи города работают только в городе; окна открывают они сами.
+        if isinstance(task, BattleTask):
+            # Боевой автопилот: бой, оверлей навыка и экран победы.
+            # Выход из боя и повтор этапа — через обычную навигацию движка.
+            return {
+                GameState.TUTORIAL_BATTLE,
+                GameState.SKILL_SELECTION,
+                GameState.VICTORY_SCREEN,
+            }
         if isinstance(task, BuildingUpgradeTask):
             return {GameState.CITY_VIEW, GameState.BUILDING_MENU, GameState.BUILDING_UPGRADE}
+        if isinstance(task, CityBuildTask):
+            # Постройка начинаетcя в городе и сама открывает экран ячейки.
+            return {GameState.CITY_VIEW, GameState.PLOT_BUILD}
+        if isinstance(task, ResearchTask):
+            # Автопилот науки: меню Институт / дерево исследований.
+            return {GameState.RESEARCH_MENU}
         if isinstance(task, (ChapterQuestTask, CityHarvestTask, CityGiftsTask, AllianceTask)):
             return {GameState.CITY_VIEW}
         if isinstance(task, PopupCloserTask):
@@ -439,13 +528,14 @@ class BotEngine:
     # ------------------------------------------------------------------
     # Навигация
     # ------------------------------------------------------------------
+    # Радиальное меню и панель улучшения закрывает сама BuildingUpgradeTask:
+    # после апгрейда панель исчезает, а кадр такта остаётся старым. Слепой тап
+    # «стрелки» по такому кадру попадает в профиль лорда в городе.
     MENU_STATES = {
         GameState.ROYAL_ROAD,
         GameState.QUESTS_MENU,
         GameState.CAMPAIGN_MAP,
         GameState.STAGE_BRIEFING,
-        GameState.BUILDING_MENU,
-        GameState.BUILDING_UPGRADE,
         GameState.TRAINING_MENU,
         GameState.RESEARCH_MENU,
         GameState.ALLIANCE_MENU,
@@ -554,6 +644,7 @@ class BotEngine:
             if self.keep_screen_on:
                 self.client.keep_screen_awake(True)
             self.client.collapse_statusbar()
+            self._start_fast_capture()
         else:
             self.reconnect_failures += 1
             logger.error(

@@ -32,3 +32,11 @@ temp_esp32_agent/
 
 # Whitelist assets directory
 !assets/**
+
+# Large scraped/generated datasets
+assets/dataset/
+assets/wiki/
+
+.kilo/
+temp_scan.json
+

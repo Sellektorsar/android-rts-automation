@@ -140,6 +140,7 @@ class Vision:
         threshold: float = 0.8,
         region: Optional[Tuple[int, int, int, int]] = None,
         scales: Optional[Sequence[float]] = None,
+        blur: int = 0,
     ) -> Optional[Tuple[int, int, float, float]]:
         """
         Поиск шаблона с перебором его РАЗМЕРА относительно кадра.
@@ -148,6 +149,12 @@ class Vision:
         шаблон, а не экран: это нужно, когда камера игры изменила размер
         объекта (зум/панорама). Вернуть лучшее совпадение выше порога:
         (center_x, center_y, confidence, relative_scale).
+
+        `blur` (нечётный размер ядра) сглаживает и шаблон, и кадр перед
+        сравнением. После панорамы камера перерисовывает здание с
+        субпиксельным сдвигом, и высокочастотные детали дают ложное
+        снижение корреляции (живой кадр 2026-10-23: 0.661 -> 0.786 при
+        ядре 7 для building_forge).
         """
         template = self.templates_cache.get(template_name)
         if template is None:
@@ -155,6 +162,8 @@ class Vision:
             return None
         if scales is None:
             scales = (0.8, 0.9, 1.0, 1.1, 1.2)
+        if blur and blur > 1:
+            template = cv2.GaussianBlur(template, (blur, blur), 0)
 
         sh, sw = screen.shape[:2]
         if region:
@@ -167,6 +176,8 @@ class Vision:
         else:
             rx, ry = 0, 0
             search_screen = screen
+        if blur and blur > 1:
+            search_screen = cv2.GaussianBlur(search_screen, (blur, blur), 0)
         area_sh, area_sw = search_screen.shape[:2]
 
         best: Optional[Tuple[int, int, float, float]] = None
@@ -257,6 +268,86 @@ class Vision:
         return [
             (int(round((offset_x + cx) / scale)), int(round((offset_y + cy) / scale)), conf)
             for cx, cy, conf in filtered
+        ]
+
+    def find_all_templates_multiscale(
+        self,
+        screen: np.ndarray,
+        template_name: str,
+        threshold: float = 0.5,
+        min_distance: int = 80,
+        region: Optional[Tuple[int, int, int, int]] = None,
+        scales: Optional[Sequence[float]] = None,
+        blur: int = 0,
+    ) -> List[Tuple[int, int, float, float]]:
+        """Ищет все вхождения шаблона при нескольких его размерах.
+
+        Пустые ячейки города имеют одинаковый рисунок камней, но из-за
+        перспективы каждая следующая ячейка на экране чуть другого размера
+        (живой кадр 2026-10-23: совпадения 0.53–0.61 при scale 1.15–1.30).
+        Одномасштабный `find_all` находит только ближайшую к эталону.
+
+        Возвращает список (center_x, center_y, confidence, relative_scale),
+        отсортированный по уверенности; близкие точки подавляются как один
+        объект (NMS по расстоянию).
+        """
+        template = self.templates_cache.get(template_name)
+        if template is None:
+            logger.debug(f"Шаблон '{template_name}' отсутствует в кэше")
+            return []
+        if scales is None:
+            scales = (1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6)
+        if blur and blur > 1:
+            template = cv2.GaussianBlur(template, (blur, blur), 0)
+
+        height, width = screen.shape[:2]
+        if region:
+            rx, ry, rw, rh = region
+            rx = max(0, min(rx, width - 1))
+            ry = max(0, min(ry, height - 1))
+            rw = max(1, min(rw, width - rx))
+            rh = max(1, min(rh, height - ry))
+            search_screen = screen[ry : ry + rh, rx : rx + rw]
+        else:
+            rx, ry = 0, 0
+            search_screen = screen
+        if blur and blur > 1:
+            search_screen = cv2.GaussianBlur(search_screen, (blur, blur), 0)
+        area_h, area_w = search_screen.shape[:2]
+
+        th0, tw0 = template.shape[:2]
+        candidates: List[Tuple[int, int, float, float]] = []
+        for rel in scales:
+            tw = int(round(tw0 * rel))
+            th = int(round(th0 * rel))
+            if tw < 8 or th < 8 or tw > area_w or th > area_h:
+                continue
+            scaled = cv2.resize(
+                template,
+                (tw, th),
+                interpolation=cv2.INTER_AREA if rel < 1.0 else cv2.INTER_LINEAR,
+            )
+            res = cv2.matchTemplate(search_screen, scaled, cv2.TM_CCOEFF_NORMED)
+            y_locs, x_locs = np.where(res >= threshold)
+            for x, y in zip(x_locs, y_locs):
+                candidates.append(
+                    (int(x + tw / 2), int(y + th / 2), float(res[y, x]), float(rel))
+                )
+
+        candidates.sort(key=lambda item: item[2], reverse=True)
+        filtered: List[Tuple[int, int, float, float]] = []
+        for cx, cy, conf, rel in candidates:
+            too_close = False
+            for fcx, fcy, _, _ in filtered:
+                if (cx - fcx) ** 2 + (cy - fcy) ** 2 < min_distance ** 2:
+                    too_close = True
+                    break
+            if not too_close:
+                filtered.append((cx, cy, conf, rel))
+
+        return [
+            (int(round(x + rx)), int(round(y + ry)), conf, rel)
+            for x, y, conf, rel in filtered
         ]
 
     def crop(self, image: np.ndarray, x: int, y: int, w: int, h: int) -> np.ndarray:
